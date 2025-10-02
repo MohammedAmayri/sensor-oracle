@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Search } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -43,19 +45,67 @@ interface DeviceModelResponse {
 export const DeviceModelFinder = () => {
   const [supplier, setSupplier] = useState("");
   const [model, setModel] = useState("");
+  const [jsonInput, setJsonInput] = useState("");
+  const [inputMode, setInputMode] = useState<"fields" | "json">("fields");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<DeviceModelResponse | null>(null);
+
+  const extractFromJson = (jsonStr: string): { supplier: string; model: string } | null => {
+    try {
+      const data = JSON.parse(jsonStr);
+      
+      // Try to find supplier and model from common field names
+      const supplier = data.supplier || data.Supplier || data.manufacturer || data.Manufacturer || "";
+      const model = data.model || data.Model || data.modelName || data.ModelName || 
+                   data.deviceProfile || data.DeviceProfile || "";
+      
+      if (supplier || model) {
+        return { supplier, model };
+      }
+      
+      return null;
+    } catch {
+      return null;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!supplier.trim() || !model.trim()) {
-      toast({
-        title: "Information saknas",
-        description: "Vänligen ange både leverantör och modell",
-        variant: "destructive",
-      });
-      return;
+    let finalSupplier = supplier;
+    let finalModel = model;
+    
+    if (inputMode === "json") {
+      if (!jsonInput.trim()) {
+        toast({
+          title: "Information saknas",
+          description: "Vänligen ange JSON-data",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const extracted = extractFromJson(jsonInput);
+      if (!extracted || (!extracted.supplier && !extracted.model)) {
+        toast({
+          title: "Kunde inte extrahera data",
+          description: "JSON måste innehålla 'supplier' och 'model' fält",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      finalSupplier = extracted.supplier;
+      finalModel = extracted.model;
+    } else {
+      if (!supplier.trim() || !model.trim()) {
+        toast({
+          title: "Information saknas",
+          description: "Vänligen ange både leverantör och modell",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -72,8 +122,8 @@ export const DeviceModelFinder = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          supplier: supplier.trim(),
-          model: model.trim(),
+          supplier: finalSupplier.trim(),
+          model: finalModel.trim(),
         }),
       });
 
@@ -110,27 +160,56 @@ export const DeviceModelFinder = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="supplier">Leverantör</Label>
-              <Input
-                id="supplier"
-                placeholder="t.ex. Small Data Garden"
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
-                className="bg-input border-primary/30 focus:border-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="model">Modell</Label>
-              <Input
-                id="model"
-                placeholder="t.ex. IOTSU AQ01"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                className="bg-input border-primary/30 focus:border-primary"
-              />
-            </div>
-            <Button type="submit" disabled={loading} className="w-full">
+            <Tabs defaultValue="fields" onValueChange={(v) => setInputMode(v as "fields" | "json")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="fields" data-testid="tab-fields">Fält</TabsTrigger>
+                <TabsTrigger value="json" data-testid="tab-json">JSON</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="fields" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="supplier">Leverantör</Label>
+                  <Input
+                    id="supplier"
+                    data-testid="input-supplier"
+                    placeholder="t.ex. Small Data Garden"
+                    value={supplier}
+                    onChange={(e) => setSupplier(e.target.value)}
+                    className="bg-input border-primary/30 focus:border-primary"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model">Modell</Label>
+                  <Input
+                    id="model"
+                    data-testid="input-model"
+                    placeholder="t.ex. IOTSU AQ01"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="bg-input border-primary/30 focus:border-primary"
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="json" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="jsonInput">JSON-data</Label>
+                  <Textarea
+                    id="jsonInput"
+                    data-testid="input-json"
+                    placeholder='{"supplier": "Small Data Garden", "model": "IOTSU AQ01"}'
+                    value={jsonInput}
+                    onChange={(e) => setJsonInput(e.target.value)}
+                    className="min-h-[200px] code-font text-sm bg-input border-primary/30 focus:border-primary"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    JSON måste innehålla fält som 'supplier' och 'model' (eller liknande varianter)
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
+            
+            <Button type="submit" disabled={loading} className="w-full" data-testid="button-search">
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
