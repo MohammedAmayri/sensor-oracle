@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Loader2, Database } from "lucide-react";
+import { Loader2, Database, Wand2, Copy } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface ModelDBResponse {
@@ -27,9 +28,90 @@ interface ModelDBResponse {
 }
 
 export const ModelDBInsertion = () => {
+  const [decoderName, setDecoderName] = useState("");
+  const [decodedData, setDecodedData] = useState("");
+  const [deviceProfile, setDeviceProfile] = useState("");
+  const [reformattedJson, setReformattedJson] = useState("");
   const [jsonInput, setJsonInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ModelDBResponse | null>(null);
+
+  const extractSupplierAndModel = (decoderName: string): { supplier: string; modelName: string } => {
+    // Remove "Decoder" prefix if present
+    let cleanName = decoderName.replace(/^Decoder/i, "");
+    
+    // Extract supplier (first word starting with capital letter)
+    const supplierMatch = cleanName.match(/^([A-Z][a-z]+)/);
+    const supplier = supplierMatch ? supplierMatch[1] : "";
+    
+    // Extract model code (everything after supplier)
+    const modelCode = cleanName.substring(supplier.length);
+    const modelName = supplier + (modelCode ? " " + modelCode : "");
+    
+    return { supplier, modelName };
+  };
+
+  const convertToNumber = (value: string): number | string => {
+    // Replace comma with period for European number format
+    const normalized = value.replace(",", ".");
+    const num = parseFloat(normalized);
+    return !isNaN(num) ? num : value;
+  };
+
+  const handleReformat = () => {
+    if (!decoderName.trim() || !decodedData.trim() || !deviceProfile.trim()) {
+      toast({
+        title: "Saknade fält",
+        description: "Vänligen fyll i alla tre fält",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Parse the decoded data JSON
+      const parsedData = JSON.parse(decodedData);
+      
+      // Extract supplier and model name
+      const { supplier, modelName } = extractSupplierAndModel(decoderName);
+      
+      // Convert numeric strings to actual numbers
+      const processedData: Record<string, any> = {};
+      for (const [key, value] of Object.entries(parsedData)) {
+        if (typeof value === "string") {
+          // Try to convert numeric strings
+          const numValue = convertToNumber(value);
+          processedData[key] = numValue;
+        } else {
+          processedData[key] = value;
+        }
+      }
+      
+      // Create the reformatted object
+      const reformatted = {
+        decoderName: decoderName,
+        deviceProfile: deviceProfile,
+        modelName: modelName,
+        supplier: supplier,
+        useOpenAI: false,
+        decodedData: processedData
+      };
+      
+      const formattedJson = JSON.stringify(reformatted, null, 2);
+      setReformattedJson(formattedJson);
+      
+      toast({
+        title: "Omformaterad!",
+        description: "Data har omformaterats till rätt format",
+      });
+    } catch (error) {
+      toast({
+        title: "Ogiltigt format",
+        description: "Kunde inte tolka decoded data som JSON",
+        variant: "destructive",
+      });
+    }
+  };
 
   const normalizeNumbers = (str: string): string => {
     // Replace commas with periods in numbers
@@ -117,6 +199,101 @@ export const ModelDBInsertion = () => {
 
   return (
     <div className="space-y-6">
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wand2 className="w-5 h-5 text-accent" />
+            Infoga modelldata
+          </CardTitle>
+          <CardDescription>Fyll i fälten nedan och omformatera till rätt JSON-struktur</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="decoderName">Decoder Name</Label>
+            <Input
+              id="decoderName"
+              data-testid="input-decoder-name"
+              placeholder="t.ex. DecoderAdeunisARF8180BA"
+              value={decoderName}
+              onChange={(e) => setDecoderName(e.target.value)}
+              className="bg-input/50 border-border/50 focus:border-primary"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="decodedData">Decoded Data (JSON)</Label>
+            <Textarea
+              id="decodedData"
+              data-testid="input-decoded-data"
+              placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
+              value={decodedData}
+              onChange={(e) => setDecodedData(e.target.value)}
+              className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
+            />
+            <p className="text-xs text-muted-foreground">
+              Obs: Numeriska värden med kommatecken (t.ex. "35,0") konverteras automatiskt till tal
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="deviceProfile">Device Profile</Label>
+            <Input
+              id="deviceProfile"
+              data-testid="input-device-profile"
+              placeholder="t.ex. ADRF/TempA.1.0.2_EU"
+              value={deviceProfile}
+              onChange={(e) => setDeviceProfile(e.target.value)}
+              className="bg-input/50 border-border/50 focus:border-primary"
+            />
+          </div>
+          
+          <Button 
+            type="button" 
+            onClick={handleReformat}
+            data-testid="button-reformat"
+            className="w-full bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent/80 glow-accent"
+          >
+            <Wand2 className="w-4 h-4" />
+            Omformatera data
+          </Button>
+        </CardContent>
+      </Card>
+
+      {reformattedJson && (
+        <Card className="glass-card border-accent/30">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Database className="w-5 h-5 text-accent" />
+                Omformaterad JSON
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="button-copy-json"
+                onClick={() => {
+                  navigator.clipboard.writeText(reformattedJson);
+                  toast({
+                    title: "Kopierad!",
+                    description: "JSON kopierad till urklipp",
+                  });
+                }}
+              >
+                <Copy className="w-4 h-4" />
+                Kopiera
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-background/50 p-4 rounded-lg overflow-x-auto border border-accent/20">
+              <pre className="code-font text-xs text-foreground whitespace-pre-wrap" data-testid="text-reformatted-json">
+                {reformattedJson}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="glow-border">
         <CardHeader>
           <CardTitle className="glow-text">Modell DB-infogning</CardTitle>
@@ -128,6 +305,7 @@ export const ModelDBInsertion = () => {
               <Label htmlFor="jsonInput">JSON-data</Label>
               <Textarea
                 id="jsonInput"
+                data-testid="input-json-data"
                 placeholder='{"decoderName": "DecoderName", "deviceProfile": "...", ...}'
                 value={jsonInput}
                 onChange={(e) => setJsonInput(e.target.value)}
@@ -137,7 +315,7 @@ export const ModelDBInsertion = () => {
                 Obs: Tal med kommatecken kommer automatiskt normaliseras till punkter
               </p>
             </div>
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button type="submit" disabled={loading} className="w-full" data-testid="button-generate-sql">
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
