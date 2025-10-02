@@ -110,13 +110,7 @@ export const DeviceModelFinder = () => {
 
     setLoading(true);
     try {
-      const apiUrl = import.meta.env.VITE_DEVICE_MODEL_FINDER_URL;
-      
-      if (!apiUrl) {
-        throw new Error("API URL saknas. Kontrollera konfigurationen.");
-      }
-      
-      const res = await fetch(apiUrl, {
+      const res = await fetch('/api/device-model-finder', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
