@@ -156,13 +156,7 @@ export const ModelDBInsertion = () => {
       // Parse to validate JSON
       const parsedInput = JSON.parse(normalizedInput);
 
-      const apiUrl = import.meta.env.VITE_MODEL_DB_INSERTION_URL;
-
-      if (!apiUrl) {
-        throw new Error("API URL saknas. Kontrollera konfigurationen.");
-      }
-
-      const res = await fetch(apiUrl, {
+      const res = await fetch('/api/model-db-insertion', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
