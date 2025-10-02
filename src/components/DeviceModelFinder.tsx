@@ -315,12 +315,67 @@ export const DeviceModelFinder = () => {
             <CardHeader>
               <CardTitle className="text-lg">Bevis</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3 code-font text-sm">
-                <pre className="bg-background/50 p-4 rounded-lg overflow-x-auto border border-border">
-                  {JSON.stringify(response.evidence, null, 2)}
-                </pre>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">LoRaWAN-version</p>
+                  <p className="font-medium">{response.evidence.lorawan_version}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Enhetsklass</p>
+                  <p className="font-medium">{response.evidence.device_class}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Tillverkare</p>
+                  <p className="font-medium">{response.evidence.manufacturer}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">Modellnamn</p>
+                  <p className="font-medium">{response.evidence.model_name}</p>
+                </div>
               </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">Regioner</p>
+                <div className="flex flex-wrap gap-2">
+                  {response.evidence.regions.map((region, idx) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1 rounded-full text-sm bg-secondary/20 text-secondary border border-secondary/30"
+                    >
+                      {region}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {response.evidence.sources && response.evidence.sources.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Källor</p>
+                  <div className="space-y-2">
+                    {response.evidence.sources.map((source, idx) => (
+                      <a
+                        key={idx}
+                        href={source}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline break-all"
+                      >
+                        {source}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {response.evidence.notes && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Anteckningar</p>
+                  <p className="text-sm leading-relaxed text-foreground/90">
+                    {response.evidence.notes}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
