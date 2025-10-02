@@ -14,7 +14,9 @@ export default defineConfig(({ mode }) => ({
       ".repl.co"
     ],
     hmr: {
-      clientPort: 5000,
+      protocol: "wss",
+      clientPort: 443,
+      port: 5000,
     },
   },
   preview: {
