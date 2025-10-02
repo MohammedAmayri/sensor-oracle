@@ -8,41 +8,41 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 26% 6%;
-    --foreground: 180 100% 90%;
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
 
-    --card: 220 25% 8%;
-    --card-foreground: 180 100% 90%;
+    --card: 224 65% 6%;
+    --card-foreground: 213 31% 91%;
 
-    --popover: 220 25% 8%;
-    --popover-foreground: 180 100% 90%;
+    --popover: 224 65% 6%;
+    --popover-foreground: 213 31% 91%;
 
-    --primary: 186 100% 50%;
-    --primary-foreground: 220 26% 6%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 270 100% 70%;
-    --secondary-foreground: 220 26% 6%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 220 20% 15%;
-    --muted-foreground: 180 20% 60%;
+    --muted: 223 47% 11%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 270 100% 70%;
-    --accent-foreground: 220 26% 6%;
+    --accent: 263 70% 50%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 180 100% 90%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 220 20% 18%;
-    --input: 220 20% 15%;
-    --ring: 186 100% 50%;
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 263 70% 50%;
 
     --radius: 0.75rem;
 
-    --glow-primary: 186 100% 50%;
-    --glow-secondary: 270 100% 70%;
-    --gradient-ai: linear-gradient(135deg, hsl(186 100% 50% / 0.2), hsl(270 100% 70% / 0.2));
-    --shadow-glow: 0 0 30px hsl(var(--glow-primary) / 0.3);
-    --shadow-glow-secondary: 0 0 30px hsl(var(--glow-secondary) / 0.3);
+    --glow-primary: 263 70% 50%;
+    --glow-secondary: 217 33% 17%;
+    --gradient-ai: linear-gradient(135deg, hsl(263 70% 50% / 0.1), hsl(217 33% 17% / 0.1));
+    --shadow-glow: 0 0 20px hsl(var(--glow-primary) / 0.15);
+    --shadow-glow-secondary: 0 0 20px hsl(var(--glow-secondary) / 0.1);
   }
 }
 
@@ -57,11 +57,11 @@ All colors MUST be HSL.
   }
 
   .glow-text {
-    text-shadow: 0 0 20px hsl(var(--glow-primary) / 0.5);
+    text-shadow: 0 0 10px hsl(var(--glow-primary) / 0.2);
   }
 
   .glow-border {
-    box-shadow: 0 0 20px hsl(var(--glow-primary) / 0.3);
+    box-shadow: 0 0 15px hsl(var(--glow-primary) / 0.15);
   }
 
   .code-font {

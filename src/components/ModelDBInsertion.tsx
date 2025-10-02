@@ -59,8 +59,8 @@ export const ModelDBInsertion = () => {
 
     if (!jsonInput.trim()) {
       toast({
-        title: "Missing Information",
-        description: "Please provide JSON input",
+        title: "Information saknas",
+        description: "Vänligen ange JSON-data",
         variant: "destructive",
       });
       return;
@@ -93,20 +93,20 @@ export const ModelDBInsertion = () => {
       setResponse(data);
 
       toast({
-        title: "Success",
-        description: "Model DB insertion processed successfully",
+        title: "Lyckades",
+        description: "Modell DB-infogning behandlades",
       });
     } catch (error) {
       if (error instanceof SyntaxError) {
         toast({
-          title: "Invalid JSON",
-          description: "Please provide valid JSON input",
+          title: "Ogiltig JSON",
+          description: "Vänligen ange giltig JSON-data",
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to process insertion",
+          title: "Fel",
+          description: error instanceof Error ? error.message : "Kunde inte behandla infogning",
           variant: "destructive",
         });
       }
@@ -119,13 +119,13 @@ export const ModelDBInsertion = () => {
     <div className="space-y-6">
       <Card className="glow-border">
         <CardHeader>
-          <CardTitle className="glow-text">Model DB Insertion</CardTitle>
-          <CardDescription>Generate SQL for device model database insertion</CardDescription>
+          <CardTitle className="glow-text">Modell DB-infogning</CardTitle>
+          <CardDescription>Generera SQL för infogning av enhetsmodell i databas</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="jsonInput">JSON Input</Label>
+              <Label htmlFor="jsonInput">JSON-data</Label>
               <Textarea
                 id="jsonInput"
                 placeholder='{"decoderName": "DecoderName", "deviceProfile": "...", ...}'
@@ -134,19 +134,19 @@ export const ModelDBInsertion = () => {
                 className="min-h-[200px] code-font text-sm bg-input border-primary/30 focus:border-primary"
               />
               <p className="text-xs text-muted-foreground">
-                Note: Numbers with commas will be automatically normalized to periods
+                Obs: Tal med kommatecken kommer automatiskt normaliseras till punkter
               </p>
             </div>
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  Processing...
+                  Bearbetar...
                 </>
               ) : (
                 <>
                   <Database />
-                  Generate SQL
+                  Generera SQL
                 </>
               )}
             </Button>
@@ -159,19 +159,19 @@ export const ModelDBInsertion = () => {
           <Card className="border-primary/30">
             <CardHeader>
               <CardTitle className="text-lg flex items-center justify-between">
-                Generated SQL
+                Genererad SQL
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
                     navigator.clipboard.writeText(formatSQL(response.sql));
                     toast({
-                      title: "Copied!",
-                      description: "SQL copied to clipboard",
+                      title: "Kopierad!",
+                      description: "SQL kopierad till urklipp",
                     });
                   }}
                 >
-                  Copy SQL
+                  Kopiera SQL
                 </Button>
               </CardTitle>
             </CardHeader>
@@ -188,7 +188,7 @@ export const ModelDBInsertion = () => {
             {response.unknownKeys && response.unknownKeys.length > 0 && (
               <Card className="border-destructive/30">
                 <CardHeader>
-                  <CardTitle className="text-lg text-destructive">Unknown Keys</CardTitle>
+                  <CardTitle className="text-lg text-destructive">Okända nycklar</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-1">
@@ -204,21 +204,21 @@ export const ModelDBInsertion = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Template Source</CardTitle>
+                <CardTitle className="text-lg">Mallkälla</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Built-in Count:</span>
+                  <span className="text-muted-foreground">Inbyggt antal:</span>
                   <span className="font-medium">{response.templateSource.builtinCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">CSV Count:</span>
+                  <span className="text-muted-foreground">CSV-antal:</span>
                   <span className="font-medium">{response.templateSource.csvCount}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Loaded from CSV:</span>
+                  <span className="text-muted-foreground">Laddad från CSV:</span>
                   <span className="font-medium">
-                    {response.templateSource.loadedFromCsv ? "Yes" : "No"}
+                    {response.templateSource.loadedFromCsv ? "Ja" : "Nej"}
                   </span>
                 </div>
               </CardContent>
@@ -227,7 +227,7 @@ export const ModelDBInsertion = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Mapped Attributes</CardTitle>
+              <CardTitle className="text-lg">Mappade attribut</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -251,10 +251,10 @@ export const ModelDBInsertion = () => {
                         ID: <span className="text-foreground font-mono">{attr.dataAttributeId}</span>
                       </span>
                       <span className="text-muted-foreground">
-                        Type: <span className="text-foreground">{attr.notificationType}</span>
+                        Typ: <span className="text-foreground">{attr.notificationType}</span>
                       </span>
                       <span className="text-muted-foreground">
-                        In Response: <span className="text-foreground">{attr.includeInResponse ? "Yes" : "No"}</span>
+                        I svar: <span className="text-foreground">{attr.includeInResponse ? "Ja" : "Nej"}</span>
                       </span>
                     </div>
                   </div>

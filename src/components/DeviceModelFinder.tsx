@@ -51,8 +51,8 @@ export const DeviceModelFinder = () => {
     
     if (!supplier.trim() || !model.trim()) {
       toast({
-        title: "Missing Information",
-        description: "Please provide both supplier and model",
+        title: "Information saknas",
+        description: "Vänligen ange både leverantör och modell",
         variant: "destructive",
       });
       return;
@@ -82,13 +82,13 @@ export const DeviceModelFinder = () => {
       setResponse(data);
       
       toast({
-        title: "Success",
-        description: "Device model found successfully",
+        title: "Lyckades",
+        description: "Enhetsmodell hittades",
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to fetch device model",
+        title: "Fel",
+        description: error instanceof Error ? error.message : "Kunde inte hämta enhetsmodell",
         variant: "destructive",
       });
     } finally {
@@ -100,26 +100,26 @@ export const DeviceModelFinder = () => {
     <div className="space-y-6">
       <Card className="glow-border">
         <CardHeader>
-          <CardTitle className="glow-text">Device Model Finder</CardTitle>
-          <CardDescription>Search for IoT device models by supplier and model name</CardDescription>
+          <CardTitle className="glow-text">Enhetsmodellfinnare</CardTitle>
+          <CardDescription>Sök efter IoT-enhetsmodeller via leverantör och modellnamn</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="supplier">Supplier</Label>
+              <Label htmlFor="supplier">Leverantör</Label>
               <Input
                 id="supplier"
-                placeholder="e.g., Small Data Garden"
+                placeholder="t.ex. Small Data Garden"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
                 className="bg-input border-primary/30 focus:border-primary"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="model">Model</Label>
+              <Label htmlFor="model">Modell</Label>
               <Input
                 id="model"
-                placeholder="e.g., IOTSU AQ01"
+                placeholder="t.ex. IOTSU AQ01"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 className="bg-input border-primary/30 focus:border-primary"
@@ -129,12 +129,12 @@ export const DeviceModelFinder = () => {
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
-                  Searching...
+                  Söker...
                 </>
               ) : (
                 <>
                   <Search />
-                  Find Device Model
+                  Hitta enhetsmodell
                 </>
               )}
             </Button>
@@ -147,37 +147,37 @@ export const DeviceModelFinder = () => {
           <Card className="border-primary/30">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                Best Match
+                Bästa matchning
                 <span className="text-sm font-normal text-muted-foreground">
-                  ({(response.confidence * 100).toFixed(0)}% confidence)
+                  ({(response.confidence * 100).toFixed(0)}% säkerhet)
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground">Manufacturer</p>
+                  <p className="text-xs text-muted-foreground">Tillverkare</p>
                   <p className="font-medium text-primary">{response.bestMatch.manufacturer}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Connectivity</p>
+                  <p className="text-xs text-muted-foreground">Anslutning</p>
                   <p className="font-medium">{response.bestMatch.connectivity}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-muted-foreground">Model Name</p>
+                  <p className="text-xs text-muted-foreground">Modellnamn</p>
                   <p className="font-medium">{response.bestMatch.modelName}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-muted-foreground">Model ID</p>
+                  <p className="text-xs text-muted-foreground">Modell-ID</p>
                   <p className="font-mono text-sm text-primary">{response.bestMatch.modelId}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-muted-foreground">ISM Bands</p>
+                  <p className="text-xs text-muted-foreground">ISM-band</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {response.bestMatch.ismBands.map((band) => (
                       <span
                         key={band}
-                        className="px-2 py-0.5 rounded-full text-xs bg-secondary/20 text-secondary border border-secondary/30"
+                        className="px-2 py-0.5 rounded-full text-xs bg-primary/10 text-primary border border-primary/30"
                       >
                         {band}
                       </span>
@@ -190,7 +190,7 @@ export const DeviceModelFinder = () => {
 
           <Card className="border-accent/30">
             <CardHeader>
-              <CardTitle className="text-lg">Why This Match?</CardTitle>
+              <CardTitle className="text-lg">Varför denna matchning?</CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
@@ -207,7 +207,7 @@ export const DeviceModelFinder = () => {
           {response.alternatives && response.alternatives.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Alternative Matches</CardTitle>
+                <CardTitle className="text-lg">Alternativa matchningar</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {response.alternatives.map((alt, idx) => (
@@ -235,7 +235,7 @@ export const DeviceModelFinder = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Evidence</CardTitle>
+              <CardTitle className="text-lg">Bevis</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3 code-font text-sm">
