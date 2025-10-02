@@ -156,8 +156,11 @@ export const ModelDBInsertion = () => {
       // Parse to validate JSON
       const parsedInput = JSON.parse(normalizedInput);
 
-      // TODO: Replace with actual Azure function URL
-      const apiUrl = "https://your-azure-function.azurewebsites.net/api/model-db-insertion";
+      const apiUrl = import.meta.env.VITE_MODEL_DB_INSERTION_URL;
+
+      if (!apiUrl) {
+        throw new Error("API URL saknas. Kontrollera konfigurationen.");
+      }
 
       const res = await fetch(apiUrl, {
         method: "POST",
