@@ -8,41 +8,43 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    --background: 222 32% 8%;
+    --foreground: 220 40% 96%;
 
-    --card: 224 65% 6%;
-    --card-foreground: 213 31% 91%;
+    --surface: 226 30% 12%;
+    --card: 226 28% 18%;
+    --card-foreground: 220 40% 96%;
 
-    --popover: 224 65% 6%;
-    --popover-foreground: 213 31% 91%;
+    --popover: 226 28% 18%;
+    --popover-foreground: 220 40% 96%;
 
-    --primary: 263 70% 50%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 258 68% 56%;
+    --primary-foreground: 220 40% 96%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 200 60% 45%;
+    --secondary-foreground: 220 40% 96%;
 
-    --muted: 223 47% 11%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 226 30% 12%;
+    --muted-foreground: 223 22% 65%;
 
-    --accent: 263 70% 50%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 167 65% 48%;
+    --accent-foreground: 220 40% 96%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 220 40% 96%;
 
-    --border: 215 28% 17%;
-    --input: 215 28% 17%;
-    --ring: 263 70% 50%;
+    --border: 225 25% 22%;
+    --input: 225 25% 22%;
+    --ring: 258 68% 56%;
 
     --radius: 0.75rem;
 
-    --glow-primary: 263 70% 50%;
-    --glow-secondary: 217 33% 17%;
-    --gradient-ai: linear-gradient(135deg, hsl(263 70% 50% / 0.1), hsl(217 33% 17% / 0.1));
-    --shadow-glow: 0 0 20px hsl(var(--glow-primary) / 0.15);
-    --shadow-glow-secondary: 0 0 20px hsl(var(--glow-secondary) / 0.1);
+    --glow-primary: 258 68% 56%;
+    --glow-secondary: 200 60% 45%;
+    --glow-accent: 167 65% 48%;
+    --shadow-glow: 0 0 30px hsl(var(--glow-primary) / 0.3);
+    --shadow-glow-secondary: 0 0 25px hsl(var(--glow-secondary) / 0.25);
+    --shadow-glow-accent: 0 0 20px hsl(var(--glow-accent) / 0.2);
   }
 }
 
@@ -54,14 +56,36 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-image: 
+      radial-gradient(at 0% 0%, hsl(258 68% 18% / 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsl(200 60% 18% / 0.1) 0px, transparent 50%);
   }
 
   .glow-text {
-    text-shadow: 0 0 10px hsl(var(--glow-primary) / 0.2);
+    text-shadow: 
+      0 0 20px hsl(var(--glow-primary) / 0.4),
+      0 0 40px hsl(var(--glow-secondary) / 0.2);
   }
 
   .glow-border {
-    box-shadow: 0 0 15px hsl(var(--glow-primary) / 0.15);
+    box-shadow: 
+      0 0 20px hsl(var(--glow-primary) / 0.2),
+      0 4px 24px hsl(var(--glow-primary) / 0.15);
+  }
+
+  .glow-accent {
+    box-shadow: 
+      0 0 20px hsl(var(--glow-accent) / 0.3),
+      0 4px 24px hsl(var(--glow-accent) / 0.2);
+  }
+
+  .glass-card {
+    background: linear-gradient(135deg, hsl(226 30% 18% / 0.7), hsl(226 28% 14% / 0.5));
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: 
+      0 8px 32px hsl(0 0% 0% / 0.4),
+      inset 0 1px 0 hsl(220 40% 96% / 0.1);
   }
 
   .code-font {
