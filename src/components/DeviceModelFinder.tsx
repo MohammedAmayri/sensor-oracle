@@ -60,8 +60,11 @@ export const DeviceModelFinder = () => {
 
     setLoading(true);
     try {
-      // TODO: Replace with actual Azure function URL
-      const apiUrl = "https://your-azure-function.azurewebsites.net/api/device-model-finder";
+      const apiUrl = import.meta.env.VITE_DEVICE_MODEL_FINDER_URL;
+      
+      if (!apiUrl) {
+        throw new Error("API URL saknas. Kontrollera konfigurationen.");
+      }
       
       const res = await fetch(apiUrl, {
         method: "POST",
