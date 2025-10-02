@@ -78,7 +78,9 @@ export const DeviceModelFinder = () => {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to fetch device model");
+        const errorText = await res.text();
+        console.error("API Error:", res.status, errorText);
+        throw new Error(`API-fel (${res.status}): ${errorText || res.statusText}`);
       }
 
       const data = await res.json();
