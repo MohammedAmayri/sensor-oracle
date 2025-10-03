@@ -1,0 +1,273 @@
+/* =======================================================================
+   Device Model:   Adeunis · Adeunis ARF8180BA
+   Decoder:        DecoderAdeunisARF8180BA
+   ThingPark ID:   ADRF/TempA.1.0.2_EU
+   ======================================================================= */
+
+
+SET NOCOUNT ON;
+
+
+
+BEGIN TRY
+    
+BEGIN TRAN;
+
+
+    /* ---- Ensure deviceModel ------------------------------------------------ */
+    
+DECLARE @name      nvarchar(100) = N'Adeunis ARF8180BA';
+
+    
+DECLARE @supplier  nvarchar(100) = N'Adeunis';
+
+    
+DECLARE @decoder   nvarchar(100) = N'DecoderAdeunisARF8180BA';
+
+    
+DECLARE @tpModel   nvarchar(200) = N'ADRF/TempA.1.0.2_EU';
+
+    
+DECLARE @deviceModelId int;
+
+
+    IF NOT EXISTS (
+        
+SELECT 1
+        
+FROM dbo.deviceModel
+        
+WHERE deviceModelName = @name
+          AND deviceModelSupplier = @supplier
+    )
+    
+BEGIN
+        
+INSERT INTO dbo.deviceModel
+        ( deviceModelName, deviceModelVersion, deviceModelSupplier, iotPlatformId, decoderFunctionName, display )
+        
+VALUES
+        ( @name, NULL, @supplier, 1, @decoder, 1 );
+
+    
+END;
+
+
+    
+SELECT TOP (1)
+        @deviceModelId = deviceModelId
+    
+FROM dbo.deviceModel
+    
+WHERE deviceModelName = @name
+      AND deviceModelSupplier = @supplier
+    ORDER BY deviceModelId DESC;
+
+
+    /* ---- Stage attributes --------------------------------------------------- */
+    
+DECLARE @attrs TABLE
+    (
+        dataAttributeId       int,
+        attributeName         nvarchar(100),
+        attributeDescription  nvarchar(300),
+        attributeValueList    nvarchar(max),
+        includeInResponse     bit,
+        notificationType      char(1),
+        attributeFri
+ENDlyName nvarchar(100)
+    );
+
+
+    
+INSERT INTO @attrs
+    ( dataAttributeId, attributeName, attributeDescription, attributeValueList, includeInResponse, notificationType, attributeFri
+ENDlyName )
+    
+VALUES
+        (6, N'FrameCounter', N'Payloadnummer', N'[
+  { "value": "number", "description": "Mätvärde", "
+SELECTable": false }
+]', 0, 'M', N'Payloadnummer'),
+        (10, N'ExternalTemperature', N'Extern temperatur i grader Celcius', N'[
+  { "value": "string", "description": "Text", "
+SELECTable": false }
+]', 1, 'M', N'Extern temperatur'),
+        (10, N'InternalTemperature', N'Intern temperatur (�C)', N'[
+  { "value": "number", "description": "Mätvärde", "
+SELECTable": false }
+]', 1, 'M', N'Intern temperatur'),
+        (14, N'LowBattery', N'L�gt batteriv�rde', N'[
+  { "value": "string", "description": "Text", "
+SELECTable": false }
+]', 1, 'M', N'Batterivarning'),
+        (14, N'UplinkType', N'Payloadtyp uplink', N'[
+  { "value": "string", "description": "Text", "
+SELECTable": false }
+]', 1, 'M', N'Payloadtyp');
+
+
+    /* ---- Upsert deviceModelAttribute --------------------------------------- */
+    
+INSERT INTO dbo.deviceModelAttribute
+    ( deviceModelId, dataAttributeId, attributeName, attributeDescription, attributeValueList, includeInResponse, notificationType, triggerLogic, triggerValue, attributeFri
+ENDlyName )
+    
+SELECT
+        @deviceModelId,
+        a.dataAttributeId,
+        a.attributeName,
+        a.attributeDescription,
+        a.attributeValueList,
+        a.includeInResponse,
+        a.notificationType,
+        NULL,
+        NULL,
+        a.attributeFri
+ENDlyName
+    
+FROM @attrs AS a
+    
+WHERE NOT EXISTS
+    (
+        
+SELECT 1
+        
+FROM dbo.deviceModelAttribute AS dma
+        
+WHERE dma.deviceModelId = @deviceModelId
+          AND dma.attributeName = a.attributeName
+    );
+
+
+    /* ---- Link to ThingPark (iotPlatformId = 1) ----------------------------- */
+    
+DECLARE @tpPlatformId int = 1, @csPlatformId int = 7, @iotPlatformDeviceModelId int;
+
+
+    IF NOT EXISTS
+    (
+        
+SELECT 1
+        
+FROM dbo.iotPlatformDeviceModel
+        
+WHERE iotPlatformId = @tpPlatformId
+          AND deviceModelId = @deviceModelId
+    )
+    
+BEGIN
+        
+INSERT INTO dbo.iotPlatformDeviceModel (iotPlatformId, deviceModelId)
+        
+VALUES (@tpPlatformId, @deviceModelId);
+
+    
+END;
+
+
+    
+SELECT @iotPlatformDeviceModelId = iotPlatformDeviceModelId
+    
+FROM dbo.iotPlatformDeviceModel
+    
+WHERE iotPlatformId = @tpPlatformId
+      AND deviceModelId = @deviceModelId;
+
+
+    IF EXISTS
+    (
+        
+SELECT 1
+        
+FROM dbo.iotDeviceModelTag
+        
+WHERE iotPlatformDeviceModelId = @iotPlatformDeviceModelId
+          AND tag = 'DeviceModelID'
+    )
+    
+BEGIN
+        
+UPDATE dbo.iotDeviceModelTag
+        
+SET [value] = CONCAT('{"OTAA": "', @tpModel, '", "ABP": "', @tpModel, '"}')
+        
+WHERE iotPlatformDeviceModelId = @iotPlatformDeviceModelId
+          AND tag = 'DeviceModelID';
+
+    
+END
+    ELSE
+    
+BEGIN
+        
+INSERT INTO dbo.iotDeviceModelTag (iotPlatformDeviceModelId, tag, [value])
+        
+VALUES (@iotPlatformDeviceModelId, 'DeviceModelID', CONCAT('{"OTAA": "', @tpModel, '", "ABP": "', @tpModel, '"}'));
+
+    
+END;
+
+
+    COMMIT TRAN;
+
+
+END TRY
+
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRAN;
+
+    THROW;
+
+
+END CATCH;
+
+
+-- ============================== VERIFY ===================================
+
+DECLARE @verifyDeviceModelId int =
+    (
+SELECT TOP (1) deviceModelId
+     
+FROM dbo.deviceModel
+     
+WHERE deviceModelName = @name
+       AND deviceModelSupplier = @supplier
+     ORDER BY deviceModelId DESC);
+
+
+
+SELECT *
+
+FROM dbo.deviceModel
+
+WHERE deviceModelId = @verifyDeviceModelId;
+
+
+
+SELECT *
+
+FROM dbo.deviceModelAttribute
+
+WHERE deviceModelId = @verifyDeviceModelId
+ORDER BY dataAttributeId, attributeName;
+
+
+
+SELECT *
+
+FROM dbo.iotPlatformDeviceModel
+
+WHERE deviceModelId = @verifyDeviceModelId
+ORDER BY iotPlatformId;
+
+
+
+SELECT t.*
+
+FROM dbo.iotDeviceModelTag AS t
+JOIN dbo.iotPlatformDeviceModel AS p
+  ON p.iotPlatformDeviceModelId = t.iotPlatformDeviceModelId
+
+WHERE p.deviceModelId = @verifyDeviceModelId
+ORDER BY p.iotPlatformId, t.tag;
