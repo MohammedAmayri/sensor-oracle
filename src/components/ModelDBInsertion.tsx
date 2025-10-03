@@ -51,6 +51,11 @@ export const ModelDBInsertion = () => {
     return { supplier, modelName };
   };
 
+  const cleanDoubleQuotes = (text: string): string => {
+    // Replace escaped double quotes ("") with single quotes (")
+    return text.replace(/""/g, '"');
+  };
+
   const convertToNumber = (value: string): number | string => {
     // Replace comma with period for European number format
     const normalized = value.replace(",", ".");
@@ -224,11 +229,11 @@ export const ModelDBInsertion = () => {
               data-testid="input-decoded-data"
               placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
               value={decodedData}
-              onChange={(e) => setDecodedData(e.target.value)}
+              onChange={(e) => setDecodedData(cleanDoubleQuotes(e.target.value))}
               className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
             />
             <p className="text-xs text-muted-foreground">
-              Obs: Numeriska värden med kommatecken (t.ex. "35,0") konverteras automatiskt till tal
+              Obs: Dubbla citattecken ("") ersätts automatiskt med enkla ("). Numeriska värden med kommatecken (t.ex. "35,0") konverteras automatiskt till tal
             </p>
           </div>
           
