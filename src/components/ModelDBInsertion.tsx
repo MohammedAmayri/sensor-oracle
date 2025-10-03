@@ -346,7 +346,7 @@ export const ModelDBInsertion = () => {
 
     // Generate the INSERT INTO @attrs VALUES section
     const attrValues = allAttributes.map(attr => {
-      const valueListJson = `[\\n  { "value": "${attr.valueKind}", "description": "${attr.valueKind === 'number' ? 'Mätvärde' : 'Text'}", "\\nSELECTable": false }\\n]`;
+      const valueListJson = `[\\n  { "value": "${attr.valueKind}", "description": "${attr.valueKind === 'number' ? 'Mätvärde' : 'Text'}", "selectable": false }\\n]`;
       return `        (${attr.dataAttributeId}, N'${attr.attributeName}', N'${attr.description}', N'${valueListJson}', ${attr.includeInResponse ? 1 : 0}, '${attr.notificationType}', N'${attr.friendlyName}')`;
     }).join(',\n');
 
@@ -361,6 +361,12 @@ export const ModelDBInsertion = () => {
 ${attrValues};`;
     
     updatedSqlText = updatedSqlText.replace(insertPattern, newInsert);
+    
+    // Fix any line break issues in attributeFriendlyName
+    updatedSqlText = updatedSqlText.replace(/attributeFri\s*\n\s*ENDlyName/g, 'attributeFriendlyName');
+    
+    // Fix mangled JSON keys
+    updatedSqlText = updatedSqlText.replace(/SELECTable/g, 'selectable');
     
     // Update the platform ID references in the SQL
     // Replace @tpPlatformId declaration
