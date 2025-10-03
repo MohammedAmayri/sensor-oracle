@@ -320,6 +320,57 @@ export const ModelDBInsertion = () => {
     setEditableMappedAttributes(updated);
   };
 
+  const getMissingAttributes = (): string[] => {
+    if (!jsonInput) return [];
+    
+    try {
+      const normalizedInput = normalizeNumbers(jsonInput);
+      const parsedInput = JSON.parse(normalizedInput);
+      const decodedData = parsedInput.decodedData;
+      
+      if (!decodedData || typeof decodedData !== 'object') return [];
+      
+      const decodedKeys = Object.keys(decodedData);
+      const existingAttributeNames = [
+        ...editableMappedAttributes.map(attr => attr.attributeName),
+        ...additionalAttributes.map(attr => attr.attributeName)
+      ];
+      
+      return decodedKeys.filter(key => !existingAttributeNames.includes(key));
+    } catch {
+      return [];
+    }
+  };
+
+  const addMissingAttributes = () => {
+    const missingKeys = getMissingAttributes();
+    
+    if (missingKeys.length === 0) {
+      toast({
+        title: "Inga saknade attribut",
+        description: "Alla attribut från decoded data är redan tillagda",
+      });
+      return;
+    }
+
+    const newAttributes = missingKeys.map(key => ({
+      attributeName: key,
+      dataAttributeId: 1,
+      attributeDescription: "",
+      attributeFriendlyName: key,
+      includeInResponse: true,
+      notificationType: "M",
+      valueKind: "string"
+    }));
+
+    setAdditionalAttributes([...additionalAttributes, ...newAttributes]);
+
+    toast({
+      title: "Attribut tillagda",
+      description: `${missingKeys.length} saknade attribut har lagts till`,
+    });
+  };
+
   const updateSqlWithAttributes = () => {
     if (!response) return;
 
@@ -749,15 +800,29 @@ ${attrValues};`;
             <CardHeader>
               <CardTitle className="text-lg flex items-center justify-between">
                 Lägg till ytterligare attribut
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={addNewAttribute}
-                  data-testid="button-add-attribute"
-                >
-                  <Plus className="w-4 h-4" />
-                  Lägg till attribut
-                </Button>
+                <div className="flex gap-2">
+                  {getMissingAttributes().length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={addMissingAttributes}
+                      className="border-amber-500 text-amber-500 hover:bg-amber-500/10"
+                      data-testid="button-add-missing"
+                    >
+                      <Wand2 className="w-4 h-4" />
+                      Lägg till saknade ({getMissingAttributes().length})
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addNewAttribute}
+                    data-testid="button-add-attribute"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Lägg till attribut
+                  </Button>
+                </div>
               </CardTitle>
               <CardDescription>
                 Lägg till saknade eller korrigera felaktiga attribut
