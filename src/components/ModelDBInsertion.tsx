@@ -102,6 +102,7 @@ export const ModelDBInsertion = () => {
   const [response, setResponse] = useState<ModelDBResponse | null>(null);
   const [additionalAttributes, setAdditionalAttributes] = useState<AdditionalAttribute[]>([]);
   const [updatedSql, setUpdatedSql] = useState("");
+  const [editableMappedAttributes, setEditableMappedAttributes] = useState<AdditionalAttribute[]>([]);
 
   const extractSupplierAndModel = (decoderName: string): { supplier: string; modelName: string } => {
     // Remove "Decoder" prefix if present
@@ -242,6 +243,17 @@ export const ModelDBInsertion = () => {
 
       const data = await res.json();
       setResponse(data);
+      
+      // Initialize editable mapped attributes from response
+      setEditableMappedAttributes(data.mapped.map((attr: any) => ({
+        attributeName: attr.attributeName,
+        dataAttributeId: attr.dataAttributeId,
+        attributeDescription: attr.description,
+        attributeFriendlyName: attr.friendlyName,
+        includeInResponse: attr.includeInResponse,
+        notificationType: attr.notificationType,
+        valueKind: attr.valueKind
+      })));
 
       toast({
         title: "Lyckades",
@@ -288,11 +300,25 @@ export const ModelDBInsertion = () => {
     setAdditionalAttributes(updated);
   };
 
+  const updateMappedAttribute = (index: number, field: keyof AdditionalAttribute, value: any) => {
+    const updated = [...editableMappedAttributes];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditableMappedAttributes(updated);
+  };
+
   const updateSqlWithAttributes = () => {
     if (!response) return;
 
     const allAttributes = [
-      ...response.mapped,
+      ...editableMappedAttributes.map(attr => ({
+        attributeName: attr.attributeName,
+        dataAttributeId: attr.dataAttributeId,
+        valueKind: attr.valueKind,
+        friendlyName: attr.attributeFriendlyName,
+        description: attr.attributeDescription,
+        includeInResponse: attr.includeInResponse,
+        notificationType: attr.notificationType
+      })),
       ...additionalAttributes.map(attr => ({
         attributeName: attr.attributeName,
         dataAttributeId: attr.dataAttributeId,
@@ -323,10 +349,14 @@ ${attrValues};`;
     updatedSqlText = updatedSqlText.replace(insertPattern, newInsert);
     
     setUpdatedSql(updatedSqlText);
+
     
+    const totalChanges = additionalAttributes.length;
     toast({
       title: "SQL uppdaterad!",
-      description: `${additionalAttributes.length} ytterligare attribut tillagda`,
+      description: totalChanges > 0 
+        ? `${editableMappedAttributes.length} befintliga attribut och ${totalChanges} nya attribut`
+        : `${editableMappedAttributes.length} attribut uppdaterade`,
     });
   };
 
@@ -538,35 +568,114 @@ ${attrValues};`;
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Mappade attribut</CardTitle>
+              <CardTitle className="text-lg">Mappade attribut (Redigerbara)</CardTitle>
+              <CardDescription>
+                Redigera befintliga attribut genom att ändra värdena nedan
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {response.mapped.map((attr, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-lg bg-muted/50 border border-border space-y-2"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-primary">{attr.attributeName}</p>
-                        <p className="text-sm text-muted-foreground">{attr.friendlyName}</p>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-secondary/20 text-secondary border border-secondary/30">
-                        {attr.valueKind}
-                      </span>
+              <div className="space-y-4">
+                {editableMappedAttributes.map((attr, index) => (
+                  <div key={index} className="p-4 rounded-lg bg-muted/50 border border-border space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-primary font-medium">Attribut: {attr.attributeName}</Label>
                     </div>
-                    <p className="text-xs text-muted-foreground">{attr.description}</p>
-                    <div className="flex gap-4 text-xs">
-                      <span className="text-muted-foreground">
-                        ID: <span className="text-foreground font-mono">{attr.dataAttributeId}</span>
-                      </span>
-                      <span className="text-muted-foreground">
-                        Typ: <span className="text-foreground">{attr.notificationType}</span>
-                      </span>
-                      <span className="text-muted-foreground">
-                        I svar: <span className="text-foreground">{attr.includeInResponse ? "Ja" : "Nej"}</span>
-                      </span>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor={`mapped-name-${index}`}>Attributnamn</Label>
+                        <Input
+                          id={`mapped-name-${index}`}
+                          value={attr.attributeName}
+                          onChange={(e) => updateMappedAttribute(index, 'attributeName', e.target.value)}
+                          data-testid={`input-mapped-name-${index}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`mapped-unit-${index}`}>Datatyp (Unit ID)</Label>
+                        <Select
+                          value={attr.dataAttributeId.toString()}
+                          onValueChange={(value) => updateMappedAttribute(index, 'dataAttributeId', parseInt(value))}
+                        >
+                          <SelectTrigger data-testid={`select-mapped-unit-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ATTRIBUTE_UNITS.map((unit) => (
+                              <SelectItem key={unit.id} value={unit.id.toString()}>
+                                {unit.id} - {unit.unit}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`mapped-friendly-${index}`}>Vänligt namn</Label>
+                        <Input
+                          id={`mapped-friendly-${index}`}
+                          value={attr.attributeFriendlyName}
+                          onChange={(e) => updateMappedAttribute(index, 'attributeFriendlyName', e.target.value)}
+                          data-testid={`input-mapped-friendly-${index}`}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`mapped-kind-${index}`}>Värdetyp</Label>
+                        <Select
+                          value={attr.valueKind}
+                          onValueChange={(value) => updateMappedAttribute(index, 'valueKind', value)}
+                        >
+                          <SelectTrigger data-testid={`select-mapped-kind-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="string">string</SelectItem>
+                            <SelectItem value="number">number</SelectItem>
+                            <SelectItem value="boolean">boolean</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor={`mapped-desc-${index}`}>Beskrivning</Label>
+                        <Input
+                          id={`mapped-desc-${index}`}
+                          value={attr.attributeDescription}
+                          onChange={(e) => updateMappedAttribute(index, 'attributeDescription', e.target.value)}
+                          data-testid={`input-mapped-description-${index}`}
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`mapped-response-${index}`}
+                          checked={attr.includeInResponse}
+                          onChange={(e) => updateMappedAttribute(index, 'includeInResponse', e.target.checked)}
+                          className="rounded border-border"
+                          data-testid={`checkbox-mapped-response-${index}`}
+                        />
+                        <Label htmlFor={`mapped-response-${index}`}>Inkludera i svar</Label>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`mapped-notif-${index}`}>Notifieringstyp</Label>
+                        <Select
+                          value={attr.notificationType}
+                          onValueChange={(value) => updateMappedAttribute(index, 'notificationType', value)}
+                        >
+                          <SelectTrigger data-testid={`select-mapped-notif-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="M">M - Measurement</SelectItem>
+                            <SelectItem value="A">A - Alert</SelectItem>
+                            <SelectItem value="S">S - Status</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -700,6 +809,17 @@ ${attrValues};`;
                 >
                   <Database className="w-4 h-4" />
                   Uppdatera SQL med nya attribut
+                </Button>
+              )}
+              
+              {additionalAttributes.length === 0 && editableMappedAttributes.length > 0 && (
+                <Button
+                  onClick={updateSqlWithAttributes}
+                  className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80"
+                  data-testid="button-update-sql-existing"
+                >
+                  <Database className="w-4 h-4" />
+                  Uppdatera SQL med redigerade attribut
                 </Button>
               )}
             </CardContent>
