@@ -4,7 +4,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Loader2, Database, Wand2, Copy } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Database, Wand2, Copy, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface ModelDBResponse {
@@ -27,6 +28,70 @@ interface ModelDBResponse {
   };
 }
 
+interface AttributeUnit {
+  id: number;
+  unit: string;
+}
+
+interface AdditionalAttribute {
+  attributeName: string;
+  dataAttributeId: number;
+  attributeDescription: string;
+  attributeFriendlyName: string;
+  includeInResponse: boolean;
+  notificationType: string;
+  valueKind: string;
+}
+
+const ATTRIBUTE_UNITS: AttributeUnit[] = [
+  { id: 1, unit: "Unknown" },
+  { id: 2, unit: "Amp" },
+  { id: 3, unit: "grader" },
+  { id: 4, unit: "status" },
+  { id: 5, unit: "%" },
+  { id: 6, unit: "tal" },
+  { id: 7, unit: "Lux" },
+  { id: 8, unit: "kPa" },
+  { id: 9, unit: "st" },
+  { id: 10, unit: "C" },
+  { id: 11, unit: "mV" },
+  { id: 12, unit: "ppb" },
+  { id: 13, unit: "m/s" },
+  { id: 14, unit: "text" },
+  { id: 15, unit: "V" },
+  { id: 16, unit: "Ohm" },
+  { id: 17, unit: "ppm" },
+  { id: 18, unit: "hPa" },
+  { id: 19, unit: "µg/m3" },
+  { id: 20, unit: "dBA" },
+  { id: 21, unit: "µm" },
+  { id: 22, unit: "#/cm3" },
+  { id: 23, unit: "mm" },
+  { id: 24, unit: "s" },
+  { id: 25, unit: "W/m2" },
+  { id: 26, unit: "mm/h" },
+  { id: 27, unit: "km" },
+  { id: 28, unit: "m" },
+  { id: 29, unit: "kWh" },
+  { id: 30, unit: "kVarh" },
+  { id: 31, unit: "m3" },
+  { id: 32, unit: "l" },
+  { id: 33, unit: "Wh" },
+  { id: 34, unit: "VArh" },
+  { id: 35, unit: "W" },
+  { id: 36, unit: "mA" },
+  { id: 37, unit: "V" },
+  { id: 38, unit: "Hz" },
+  { id: 39, unit: "nm" },
+  { id: 40, unit: "Pa" },
+  { id: 41, unit: "dB" },
+  { id: 42, unit: "Bq/m3" },
+  { id: 43, unit: "Ah" },
+  { id: 44, unit: "ds/m" },
+  { id: 45, unit: "g" },
+  { id: 46, unit: "min" },
+];
+
 export const ModelDBInsertion = () => {
   const [decoderName, setDecoderName] = useState("");
   const [decodedData, setDecodedData] = useState("");
@@ -35,6 +100,8 @@ export const ModelDBInsertion = () => {
   const [jsonInput, setJsonInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ModelDBResponse | null>(null);
+  const [additionalAttributes, setAdditionalAttributes] = useState<AdditionalAttribute[]>([]);
+  const [updatedSql, setUpdatedSql] = useState("");
 
   const extractSupplierAndModel = (decoderName: string): { supplier: string; modelName: string } => {
     // Remove "Decoder" prefix if present
@@ -197,6 +264,70 @@ export const ModelDBInsertion = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const addNewAttribute = () => {
+    setAdditionalAttributes([...additionalAttributes, {
+      attributeName: "",
+      dataAttributeId: 1,
+      attributeDescription: "",
+      attributeFriendlyName: "",
+      includeInResponse: true,
+      notificationType: "M",
+      valueKind: "string"
+    }]);
+  };
+
+  const removeAttribute = (index: number) => {
+    setAdditionalAttributes(additionalAttributes.filter((_, i) => i !== index));
+  };
+
+  const updateAttribute = (index: number, field: keyof AdditionalAttribute, value: any) => {
+    const updated = [...additionalAttributes];
+    updated[index] = { ...updated[index], [field]: value };
+    setAdditionalAttributes(updated);
+  };
+
+  const updateSqlWithAttributes = () => {
+    if (!response) return;
+
+    const allAttributes = [
+      ...response.mapped,
+      ...additionalAttributes.map(attr => ({
+        attributeName: attr.attributeName,
+        dataAttributeId: attr.dataAttributeId,
+        valueKind: attr.valueKind,
+        friendlyName: attr.attributeFriendlyName,
+        description: attr.attributeDescription,
+        includeInResponse: attr.includeInResponse,
+        notificationType: attr.notificationType
+      }))
+    ];
+
+    // Generate the INSERT INTO @attrs VALUES section
+    const attrValues = allAttributes.map(attr => {
+      const valueListJson = `[\\n  { "value": "${attr.valueKind}", "description": "${attr.valueKind === 'number' ? 'Mätvärde' : 'Text'}", "\\nSELECTable": false }\\n]`;
+      return `        (${attr.dataAttributeId}, N'${attr.attributeName}', N'${attr.description}', N'${valueListJson}', ${attr.includeInResponse ? 1 : 0}, '${attr.notificationType}', N'${attr.friendlyName}')`;
+    }).join(',\n');
+
+    // Update the SQL by replacing the VALUES section
+    let updatedSqlText = response.sql;
+    
+    // Find and replace the INSERT INTO @attrs VALUES section
+    const insertPattern = /INSERT INTO @attrs[\s\S]*?VALUES[\s\S]*?;/i;
+    const newInsert = `INSERT INTO @attrs
+    ( dataAttributeId, attributeName, attributeDescription, attributeValueList, includeInResponse, notificationType, attributeFriendlyName )
+    VALUES
+${attrValues};`;
+    
+    updatedSqlText = updatedSqlText.replace(insertPattern, newInsert);
+    
+    setUpdatedSql(updatedSqlText);
+    
+    toast({
+      title: "SQL uppdaterad!",
+      description: `${additionalAttributes.length} ytterligare attribut tillagda`,
+    });
   };
 
   return (
@@ -442,6 +573,169 @@ export const ModelDBInsertion = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="border-accent/30">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center justify-between">
+                Lägg till ytterligare attribut
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addNewAttribute}
+                  data-testid="button-add-attribute"
+                >
+                  <Plus className="w-4 h-4" />
+                  Lägg till attribut
+                </Button>
+              </CardTitle>
+              <CardDescription>
+                Lägg till saknade eller korrigera felaktiga attribut
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {additionalAttributes.map((attr, index) => (
+                <div key={index} className="p-4 rounded-lg bg-muted/30 border border-accent/20 space-y-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-accent">Attribut {index + 1}</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeAttribute(index)}
+                      data-testid={`button-remove-attribute-${index}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor={`attr-name-${index}`}>Attributnamn</Label>
+                      <Input
+                        id={`attr-name-${index}`}
+                        value={attr.attributeName}
+                        onChange={(e) => updateAttribute(index, 'attributeName', e.target.value)}
+                        placeholder="t.ex. InternalSensor"
+                        data-testid={`input-attribute-name-${index}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`attr-unit-${index}`}>Datatyp (Unit ID)</Label>
+                      <Select
+                        value={attr.dataAttributeId.toString()}
+                        onValueChange={(value) => updateAttribute(index, 'dataAttributeId', parseInt(value))}
+                      >
+                        <SelectTrigger data-testid={`select-attribute-unit-${index}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ATTRIBUTE_UNITS.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.id.toString()}>
+                              {unit.id} - {unit.unit}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`attr-friendly-${index}`}>Vänligt namn</Label>
+                      <Input
+                        id={`attr-friendly-${index}`}
+                        value={attr.attributeFriendlyName}
+                        onChange={(e) => updateAttribute(index, 'attributeFriendlyName', e.target.value)}
+                        placeholder="t.ex. Intern sensor"
+                        data-testid={`input-attribute-friendly-${index}`}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`attr-kind-${index}`}>Värdetyp</Label>
+                      <Select
+                        value={attr.valueKind}
+                        onValueChange={(value) => updateAttribute(index, 'valueKind', value)}
+                      >
+                        <SelectTrigger data-testid={`select-value-kind-${index}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="string">string</SelectItem>
+                          <SelectItem value="number">number</SelectItem>
+                          <SelectItem value="boolean">boolean</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor={`attr-desc-${index}`}>Beskrivning</Label>
+                      <Input
+                        id={`attr-desc-${index}`}
+                        value={attr.attributeDescription}
+                        onChange={(e) => updateAttribute(index, 'attributeDescription', e.target.value)}
+                        placeholder="t.ex. Intern sensor identifierare"
+                        data-testid={`input-attribute-description-${index}`}
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id={`attr-response-${index}`}
+                        checked={attr.includeInResponse}
+                        onChange={(e) => updateAttribute(index, 'includeInResponse', e.target.checked)}
+                        className="rounded border-border"
+                        data-testid={`checkbox-include-response-${index}`}
+                      />
+                      <Label htmlFor={`attr-response-${index}`}>Inkludera i svar</Label>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {additionalAttributes.length > 0 && (
+                <Button
+                  onClick={updateSqlWithAttributes}
+                  className="w-full bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent/80"
+                  data-testid="button-update-sql"
+                >
+                  <Database className="w-4 h-4" />
+                  Uppdatera SQL med nya attribut
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {updatedSql && (
+            <Card className="border-primary/30">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center justify-between">
+                  Uppdaterad SQL
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(formatSQL(updatedSql));
+                      toast({
+                        title: "Kopierad!",
+                        description: "Uppdaterad SQL kopierad till urklipp",
+                      });
+                    }}
+                    data-testid="button-copy-updated-sql"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Kopiera SQL
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-background/50 p-4 rounded-lg overflow-x-auto border border-border">
+                  <pre className="code-font text-xs text-foreground whitespace-pre-wrap" data-testid="text-updated-sql">
+                    {formatSQL(updatedSql)}
+                  </pre>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>
