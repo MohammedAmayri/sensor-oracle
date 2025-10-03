@@ -116,7 +116,7 @@ export const ModelDBInsertion = () => {
   const [additionalAttributes, setAdditionalAttributes] = useState<AdditionalAttribute[]>([]);
   const [updatedSql, setUpdatedSql] = useState("");
   const [editableMappedAttributes, setEditableMappedAttributes] = useState<AdditionalAttribute[]>([]);
-  const [selectedPlatformId, setSelectedPlatformId] = useState<number>(1);
+  const [selectedPlatformIds, setSelectedPlatformIds] = useState<number[]>([1]);
 
   const extractSupplierAndModel = (decoderName: string): { supplier: string; modelName: string } => {
     // Remove "Decoder" prefix if present
@@ -371,6 +371,24 @@ export const ModelDBInsertion = () => {
     });
   };
 
+  const togglePlatform = (platformId: number) => {
+    setSelectedPlatformIds(prev => {
+      if (prev.includes(platformId)) {
+        // Don't allow deselecting if it's the only one selected
+        if (prev.length === 1) {
+          toast({
+            title: "Minst en plattform krävs",
+            description: "Du måste ha minst en IoT-plattform vald",
+            variant: "destructive"
+          });
+          return prev;
+        }
+        return prev.filter(id => id !== platformId);
+      }
+      return [...prev, platformId].sort();
+    });
+  };
+
   const updateSqlWithAttributes = () => {
     if (!response) return;
 
@@ -419,17 +437,65 @@ ${attrValues};`;
     // Fix mangled JSON keys
     updatedSqlText = updatedSqlText.replace(/SELECTable/g, 'selectable');
     
-    // Update the platform ID references in the SQL
-    // Replace @tpPlatformId declaration
-    updatedSqlText = updatedSqlText.replace(
-      /DECLARE @tpPlatformId int = \d+/,
-      `DECLARE @tpPlatformId int = ${selectedPlatformId}`
-    );
+    // Generate platform linking sections for all selected platforms
+    const platformLinkingSections = selectedPlatformIds.map(platformId => {
+      const platform = IOT_PLATFORMS.find(p => p.id === platformId);
+      const platformName = platform ? platform.name : `Platform ${platformId}`;
+      
+      // ThingPark (ID 1) uses JSON format, others use plain string
+      const isThingPark = platformId === 1;
+      const valueFormat = isThingPark
+        ? `CONCAT('{"OTAA":"', @tpModel, '","ABP":"', @tpModel, '"}')`
+        : `@csModel`;
+      
+      return `    /* ---- Link to ${platformName} (iotPlatformId = ${platformId}) ---------------------------- */
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.iotPlatformDeviceModel
+        WHERE iotPlatformId = ${platformId}
+          AND deviceModelId = @deviceModelId
+    )
+    BEGIN
+        INSERT INTO dbo.iotPlatformDeviceModel (iotPlatformId, deviceModelId)
+        VALUES (${platformId}, @deviceModelId);
+    END
+
+    SELECT @iotPlatformDeviceModelId = iotPlatformDeviceModelId
+    FROM dbo.iotPlatformDeviceModel
+    WHERE iotPlatformId = ${platformId}
+      AND deviceModelId = @deviceModelId;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM dbo.iotDeviceModelTag
+        WHERE iotPlatformDeviceModelId = @iotPlatformDeviceModelId
+          AND tag = 'DeviceModelID'
+    )
+    BEGIN
+        UPDATE dbo.iotDeviceModelTag
+        SET [value] = ${valueFormat}
+        WHERE iotPlatformDeviceModelId = @iotPlatformDeviceModelId
+          AND tag = 'DeviceModelID';
+    END
+    ELSE
+    BEGIN
+        INSERT INTO dbo.iotDeviceModelTag (iotPlatformDeviceModelId, tag, [value])
+        VALUES (@iotPlatformDeviceModelId, 'DeviceModelID', ${valueFormat});
+    END`;
+    }).join('\n\n');
     
-    // Replace iotPlatformId in INSERT statement
+    // Replace all platform linking sections with new ones
+    // Find the pattern starting from first "Link to" comment to COMMIT TRAN
+    const platformSectionPattern = /\/\* ---- Link to.*?(?=COMMIT TRAN;)/s;
+    updatedSqlText = updatedSqlText.replace(platformSectionPattern, platformLinkingSections + '\n\n    ');
+    
+    // Update the primary platform ID in the initial INSERT statement (use first selected platform)
+    const primaryPlatformId = selectedPlatformIds[0];
     updatedSqlText = updatedSqlText.replace(
       /\(.*deviceModelName.*deviceModelVersion.*deviceModelSupplier.*iotPlatformId.*decoderFunctionName.*display.*\)[\s\S]*?VALUES[\s\S]*?\(.*@name.*NULL.*@supplier.*\d+.*@decoder.*1.*\)/i,
-      (match) => match.replace(/(@supplier,\s*)(\d+)/, `$1${selectedPlatformId}`)
+      (match) => match.replace(/(@supplier,\s*)(\d+)/, `$1${primaryPlatformId}`)
     );
     
     setUpdatedSql(updatedSqlText);
@@ -661,27 +727,32 @@ ${attrValues};`;
                   </CardDescription>
                 </div>
                 
-                <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-primary/20">
-                  <Label htmlFor="platform-select" className="font-medium whitespace-nowrap">
-                    IoT Platform:
-                  </Label>
-                  <Select
-                    value={selectedPlatformId.toString()}
-                    onValueChange={(value) => setSelectedPlatformId(parseInt(value))}
-                  >
-                    <SelectTrigger id="platform-select" className="max-w-xs" data-testid="select-platform">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {IOT_PLATFORMS.map((platform) => (
-                        <SelectItem key={platform.id} value={platform.id.toString()}>
+                <div className="p-4 bg-muted/30 rounded-lg border border-primary/20 space-y-3">
+                  <div>
+                    <Label className="font-medium">IoT Plattformar:</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Välj vilka plattformar som ska inkluderas i SQL-skriptet
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {IOT_PLATFORMS.map((platform) => (
+                      <div key={platform.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`platform-${platform.id}`}
+                          checked={selectedPlatformIds.includes(platform.id)}
+                          onChange={() => togglePlatform(platform.id)}
+                          className="rounded border-border"
+                          data-testid={`checkbox-platform-${platform.id}`}
+                        />
+                        <Label htmlFor={`platform-${platform.id}`} className="cursor-pointer">
                           {platform.id} - {platform.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Vald plattform kommer att uppdateras i SQL-skriptet
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Valda: {selectedPlatformIds.length} plattform{selectedPlatformIds.length !== 1 ? 'ar' : ''}
                   </p>
                 </div>
               </div>
