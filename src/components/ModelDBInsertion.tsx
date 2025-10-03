@@ -550,11 +550,12 @@ ${attrValues};`;
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-background/50 p-4 rounded-lg overflow-x-auto border border-border">
-                <pre className="code-font text-xs text-foreground whitespace-pre-wrap">
-                  {formatSQL(response.sql)}
-                </pre>
-              </div>
+              <Textarea
+                readOnly
+                value={formatSQL(response.sql)}
+                className="min-h-[400px] code-font text-xs bg-background/50 border-border resize-y"
+                data-testid="textarea-generated-sql"
+              />
             </CardContent>
           </Card>
 
