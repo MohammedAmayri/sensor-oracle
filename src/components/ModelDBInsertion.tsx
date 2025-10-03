@@ -92,6 +92,19 @@ const ATTRIBUTE_UNITS: AttributeUnit[] = [
   { id: 46, unit: "min" },
 ];
 
+interface IotPlatform {
+  id: number;
+  name: string;
+}
+
+const IOT_PLATFORMS: IotPlatform[] = [
+  { id: 1, name: "Thingpark" },
+  { id: 6, name: "Radonova" },
+  { id: 7, name: "Chirpstack" },
+  { id: 8, name: "Kameror MKB Net" },
+  { id: 9, name: "Netmore" },
+];
+
 export const ModelDBInsertion = () => {
   const [decoderName, setDecoderName] = useState("");
   const [decodedData, setDecodedData] = useState("");
@@ -103,6 +116,7 @@ export const ModelDBInsertion = () => {
   const [additionalAttributes, setAdditionalAttributes] = useState<AdditionalAttribute[]>([]);
   const [updatedSql, setUpdatedSql] = useState("");
   const [editableMappedAttributes, setEditableMappedAttributes] = useState<AdditionalAttribute[]>([]);
+  const [selectedPlatformId, setSelectedPlatformId] = useState<number>(1);
 
   const extractSupplierAndModel = (decoderName: string): { supplier: string; modelName: string } => {
     // Remove "Decoder" prefix if present
@@ -348,6 +362,19 @@ ${attrValues};`;
     
     updatedSqlText = updatedSqlText.replace(insertPattern, newInsert);
     
+    // Update the platform ID references in the SQL
+    // Replace @tpPlatformId declaration
+    updatedSqlText = updatedSqlText.replace(
+      /DECLARE @tpPlatformId int = \d+/,
+      `DECLARE @tpPlatformId int = ${selectedPlatformId}`
+    );
+    
+    // Replace iotPlatformId in INSERT statement
+    updatedSqlText = updatedSqlText.replace(
+      /\(.*deviceModelName.*deviceModelVersion.*deviceModelSupplier.*iotPlatformId.*decoderFunctionName.*display.*\)[\s\S]*?VALUES[\s\S]*?\(.*@name.*NULL.*@supplier.*\d+.*@decoder.*1.*\)/i,
+      (match) => match.replace(/(@supplier,\s*)(\d+)/, `$1${selectedPlatformId}`)
+    );
+    
     setUpdatedSql(updatedSqlText);
 
     
@@ -568,10 +595,38 @@ ${attrValues};`;
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Mappade attribut (Redigerbara)</CardTitle>
-              <CardDescription>
-                Redigera befintliga attribut genom att ändra värdena nedan
-              </CardDescription>
+              <div className="space-y-4">
+                <div>
+                  <CardTitle className="text-lg">Mappade attribut (Redigerbara)</CardTitle>
+                  <CardDescription>
+                    Redigera befintliga attribut genom att ändra värdena nedan
+                  </CardDescription>
+                </div>
+                
+                <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-primary/20">
+                  <Label htmlFor="platform-select" className="font-medium whitespace-nowrap">
+                    IoT Platform:
+                  </Label>
+                  <Select
+                    value={selectedPlatformId.toString()}
+                    onValueChange={(value) => setSelectedPlatformId(parseInt(value))}
+                  >
+                    <SelectTrigger id="platform-select" className="max-w-xs" data-testid="select-platform">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {IOT_PLATFORMS.map((platform) => (
+                        <SelectItem key={platform.id} value={platform.id.toString()}>
+                          {platform.id} - {platform.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Vald plattform kommer att uppdateras i SQL-skriptet
+                  </p>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
