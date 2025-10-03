@@ -431,13 +431,30 @@ ${attrValues};`;
     
     updatedSqlText = updatedSqlText.replace(insertPattern, newInsert);
     
-    // Fix any line break issues in attributeFriendlyName
+    // Fix any issues with attributeFriendlyName (various corruptions)
     updatedSqlText = updatedSqlText.replace(/attributeFri\s*\n\s*ENDlyName/g, 'attributeFriendlyName');
+    updatedSqlText = updatedSqlText.replace(/attributeFriENDlyName/g, 'attributeFriendlyName');
     
-    // Fix mangled JSON keys
+    // Fix mangled JSON keys (handle with and without line breaks)
+    updatedSqlText = updatedSqlText.replace(/"\s*\n\s*SELECTable"/g, '"selectable"');
     updatedSqlText = updatedSqlText.replace(/SELECTable/g, 'selectable');
     
+    // Ensure @csModel declaration exists (after @tpModel declaration)
+    if (!updatedSqlText.includes('DECLARE @csModel')) {
+      updatedSqlText = updatedSqlText.replace(
+        /(DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'[^']*';)/,
+        `$1\n    DECLARE @csModel   nvarchar(200) = @tpModel; -- change if ChirpStack differs`
+      );
+    }
+    
+    // Ensure @iotPlatformDeviceModelId is declared in the platform linking section
+    // We'll add it at the start of the platform linking sections
+    
     // Generate platform linking sections for all selected platforms
+    const platformLinkingDeclaration = `    /* ---- Link to IoT Platforms -------------------------------------------- */
+    DECLARE @iotPlatformDeviceModelId int;
+`;
+    
     const platformLinkingSections = selectedPlatformIds.map(platformId => {
       const platform = IOT_PLATFORMS.find(p => p.id === platformId);
       const platformName = platform ? platform.name : `Platform ${platformId}`;
@@ -486,10 +503,12 @@ ${attrValues};`;
     END`;
     }).join('\n\n');
     
+    const completePlatformSection = platformLinkingDeclaration + '\n' + platformLinkingSections;
+    
     // Replace all platform linking sections with new ones
     // Find the pattern starting from first "Link to" comment to COMMIT TRAN
     const platformSectionPattern = /\/\* ---- Link to.*?(?=COMMIT TRAN;)/s;
-    updatedSqlText = updatedSqlText.replace(platformSectionPattern, platformLinkingSections + '\n\n    ');
+    updatedSqlText = updatedSqlText.replace(platformSectionPattern, completePlatformSection + '\n\n    ');
     
     // Update the primary platform ID in the initial INSERT statement (use first selected platform)
     const primaryPlatformId = selectedPlatformIds[0];
