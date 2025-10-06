@@ -205,6 +205,20 @@ export const ModelDBInsertion = () => {
     return str.replace(/(\d),(\d)/g, "$1.$2");
   };
 
+  const cleanSqlText = (sql: string): string => {
+    let cleaned = sql;
+    
+    // Fix all attributeFriendlyName corruptions
+    cleaned = cleaned.replace(/attributeFri\s*\n\s*ENDlyName/g, 'attributeFriendlyName');
+    cleaned = cleaned.replace(/attributeFriENDlyName/g, 'attributeFriendlyName');
+    
+    // Fix mangled JSON keys (with or without line breaks)
+    cleaned = cleaned.replace(/"\s*\n\s*SELECTable"/g, '"selectable"');
+    cleaned = cleaned.replace(/SELECTable/g, 'selectable');
+    
+    return cleaned;
+  };
+
   const formatSQL = (sql: string): string => {
     // Basic SQL formatting
     return sql
@@ -256,6 +270,10 @@ export const ModelDBInsertion = () => {
       }
 
       const data = await res.json();
+      
+      // Clean the SQL before setting response
+      data.sql = cleanSqlText(data.sql);
+      
       setResponse(data);
       
       // Initialize editable mapped attributes from response
@@ -431,13 +449,8 @@ ${attrValues};`;
     
     updatedSqlText = updatedSqlText.replace(insertPattern, newInsert);
     
-    // Fix any issues with attributeFriendlyName (various corruptions)
-    updatedSqlText = updatedSqlText.replace(/attributeFri\s*\n\s*ENDlyName/g, 'attributeFriendlyName');
-    updatedSqlText = updatedSqlText.replace(/attributeFriENDlyName/g, 'attributeFriendlyName');
-    
-    // Fix mangled JSON keys (handle with and without line breaks)
-    updatedSqlText = updatedSqlText.replace(/"\s*\n\s*SELECTable"/g, '"selectable"');
-    updatedSqlText = updatedSqlText.replace(/SELECTable/g, 'selectable');
+    // Apply SQL cleanup to fix corruptions
+    updatedSqlText = cleanSqlText(updatedSqlText);
     
     // Ensure @csModel declaration exists (after @tpModel declaration)
     if (!updatedSqlText.includes('DECLARE @csModel')) {
