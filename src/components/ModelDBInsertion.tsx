@@ -161,11 +161,16 @@ export const ModelDBInsertion = () => {
     
     // Replace data types with example values
     for (const [type, value] of Object.entries(typeReplacements)) {
-      const regex = new RegExp(`:\\s*${type}\\s*([,}])`, 'gi');
+      const regex = new RegExp(`:\\s*${type}\\s*([,}\\n])`, 'gi');
       fixed = fixed.replace(regex, `: ${value}$1`);
     }
     
-    // Step 4: Ensure proper JSON structure
+    // Step 4: Add missing commas between properties
+    // Look for patterns where a value is followed by a newline and then a quote (next property)
+    // This handles: value\n"nextProperty" -> value,\n"nextProperty"
+    fixed = fixed.replace(/(["\d}\]false|true|null])\s*\n\s*(")/g, '$1,\n$2');
+    
+    // Step 5: Ensure proper JSON structure
     // Remove any trailing commas before closing braces/brackets
     fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
     
