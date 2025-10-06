@@ -438,7 +438,8 @@ export const ModelDBInsertion = () => {
     }).join(',\n');
 
     // Update the SQL by replacing the VALUES section
-    let updatedSqlText = response.sql;
+    // Use the current SQL (either already updated, or the original from response)
+    let updatedSqlText = updatedSql || response.sql;
     
     // Find and replace the INSERT INTO @attrs VALUES section
     const insertPattern = /INSERT INTO @attrs[\s\S]*?VALUES[\s\S]*?;/i;
@@ -534,11 +535,16 @@ ${attrValues};`;
 
     
     const totalChanges = additionalAttributes.length;
+    const platformNames = selectedPlatformIds
+      .map(id => IOT_PLATFORMS.find(p => p.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+    
     toast({
       title: "SQL uppdaterad!",
       description: totalChanges > 0 
-        ? `${editableMappedAttributes.length} befintliga attribut och ${totalChanges} nya attribut`
-        : `${editableMappedAttributes.length} attribut uppdaterade`,
+        ? `${editableMappedAttributes.length} befintliga + ${totalChanges} nya attribut · Plattformar: ${platformNames}`
+        : `${editableMappedAttributes.length} attribut · Plattformar: ${platformNames}`,
     });
   };
 
