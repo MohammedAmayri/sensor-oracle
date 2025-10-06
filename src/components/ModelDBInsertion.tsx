@@ -289,7 +289,7 @@ export const ModelDBInsertion = () => {
 
       toast({
         title: "Lyckades",
-        description: "Modell DB-infogning behandlades",
+        description: "Device Model DB Insertion behandlades",
       });
     } catch (error) {
       if (error instanceof SyntaxError) {
@@ -650,7 +650,7 @@ ${attrValues};`;
 
       <Card className="glow-border">
         <CardHeader>
-          <CardTitle className="glow-text">Modell DB-infogning</CardTitle>
+          <CardTitle className="glow-text">Device Model DB Insertion</CardTitle>
           <CardDescription>Generera SQL för infogning av enhetsmodell i databas</CardDescription>
         </CardHeader>
         <CardContent>
