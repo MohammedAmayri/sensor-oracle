@@ -35,14 +35,14 @@ const Index = () => {
               className="gap-2 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
             >
               <Brain className="w-4 h-4" />
-              <span className="font-medium">Enhetsmodellfinnare</span>
+              <span className="font-medium">DeviceProfile Finnare</span>
             </TabsTrigger>
             <TabsTrigger 
               value="insertion" 
               className="gap-2 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
             >
               <Database className="w-4 h-4" />
-              <span className="font-medium">Modell DB-infogning</span>
+              <span className="font-medium">Device Model DB Insertion</span>
             </TabsTrigger>
           </TabsList>
 

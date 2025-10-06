@@ -149,7 +149,7 @@ export const DeviceModelFinder = () => {
     <div className="space-y-6">
       <Card className="glow-border">
         <CardHeader>
-          <CardTitle className="glow-text">Enhetsmodellfinnare</CardTitle>
+          <CardTitle className="glow-text">DeviceProfile Finnare</CardTitle>
           <CardDescription>Sök efter IoT-enhetsmodeller via leverantör och modellnamn</CardDescription>
         </CardHeader>
         <CardContent>
