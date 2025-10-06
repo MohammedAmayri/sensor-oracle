@@ -453,18 +453,15 @@ ${attrValues};`;
     // Apply SQL cleanup to fix corruptions
     updatedSqlText = cleanSqlText(updatedSqlText);
     
-    // Ensure @csModel declaration exists (after @tpModel declaration)
-    if (!updatedSqlText.includes('DECLARE @csModel')) {
+    // Ensure @chirpstackDeviceModel declaration exists (after @tpModel declaration)
+    if (!updatedSqlText.includes('DECLARE @chirpstackDeviceModel')) {
       updatedSqlText = updatedSqlText.replace(
         /(DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'[^']*';)/,
-        `$1\n    DECLARE @csModel   nvarchar(200) = @tpModel; -- change if ChirpStack differs`
+        `$1\n    DECLARE @chirpstackDeviceModel nvarchar(200) = @tpModel; -- change if ChirpStack differs`
       );
     }
     
-    // Ensure @iotPlatformDeviceModelId is declared in the platform linking section
-    // We'll add it at the start of the platform linking sections
-    
-    // Generate platform linking sections for all selected platforms
+    // Generate platform linking sections for all selected platforms (simple INSERT + SCOPE_IDENTITY format)
     const platformLinkingDeclaration = `    /* ---- Link to IoT Platforms -------------------------------------------- */
     DECLARE @iotPlatformDeviceModelId int;
 `;
@@ -473,56 +470,57 @@ ${attrValues};`;
       const platform = IOT_PLATFORMS.find(p => p.id === platformId);
       const platformName = platform ? platform.name : `Platform ${platformId}`;
       
-      // ThingPark (ID 1) uses JSON format, others use plain string
+      // ThingPark (ID 1) uses JSON format with literal string interpolation
+      // All other platforms use @chirpstackDeviceModel variable
       const isThingPark = platformId === 1;
-      const valueFormat = isThingPark
-        ? `CONCAT('{"OTAA":"', @tpModel, '","ABP":"', @tpModel, '"}')`
-        : `@csModel`;
+      const valueExpression = isThingPark
+        ? `'{"OTAA": "' + @tpModel + '", "ABP": "' + @tpModel + '"}'`
+        : `@chirpstackDeviceModel`;
       
       return `    /* ---- Link to ${platformName} (iotPlatformId = ${platformId}) ---------------------------- */
-    IF NOT EXISTS
+    INSERT INTO dbo.iotPlatformDeviceModel
+                           (  iotPlatformId
+                           ,   deviceModelId
+                           )
+    VALUES
     (
-        SELECT 1
-        FROM dbo.iotPlatformDeviceModel
-        WHERE iotPlatformId = ${platformId}
-          AND deviceModelId = @deviceModelId
-    )
-    BEGIN
-        INSERT INTO dbo.iotPlatformDeviceModel (iotPlatformId, deviceModelId)
-        VALUES (${platformId}, @deviceModelId);
-    END
+    ${platformId},
+    @deviceModelId
+    );
 
-    SELECT @iotPlatformDeviceModelId = iotPlatformDeviceModelId
-    FROM dbo.iotPlatformDeviceModel
-    WHERE iotPlatformId = ${platformId}
-      AND deviceModelId = @deviceModelId;
+    SET @iotPlatformDeviceModelId = SCOPE_IDENTITY();
 
-    IF EXISTS
+    INSERT INTO dbo.iotDeviceModelTag
+                           (  iotPlatformDeviceModelId
+                           ,   tag
+                           ,   [value]
+                           )
+    VALUES
     (
-        SELECT 1
-        FROM dbo.iotDeviceModelTag
-        WHERE iotPlatformDeviceModelId = @iotPlatformDeviceModelId
-          AND tag = 'DeviceModelID'
-    )
-    BEGIN
-        UPDATE dbo.iotDeviceModelTag
-        SET [value] = ${valueFormat}
-        WHERE iotPlatformDeviceModelId = @iotPlatformDeviceModelId
-          AND tag = 'DeviceModelID';
-    END
-    ELSE
-    BEGIN
-        INSERT INTO dbo.iotDeviceModelTag (iotPlatformDeviceModelId, tag, [value])
-        VALUES (@iotPlatformDeviceModelId, 'DeviceModelID', ${valueFormat});
-    END`;
+    @iotPlatformDeviceModelId,
+    'DeviceModelID',
+    ${valueExpression}
+    );`;
     }).join('\n\n');
     
     const completePlatformSection = platformLinkingDeclaration + '\n' + platformLinkingSections;
     
     // Replace all platform linking sections with new ones
-    // Find the pattern starting from first "Link to" comment to COMMIT TRAN
-    const platformSectionPattern = /\/\* ---- Link to.*?(?=COMMIT TRAN;)/s;
-    updatedSqlText = updatedSqlText.replace(platformSectionPattern, completePlatformSection + '\n\n    ');
+    // Try multiple patterns to find where to insert the platform linking
+    const platformSectionPattern1 = /\/\* ---- Link to.*?(?=\n\s*COMMIT TRAN;)/s;
+    const platformSectionPattern2 = /DECLARE @iotPlatformDeviceModelId int;[\s\S]*?(?=\n\s*COMMIT TRAN;)/;
+    const platformSectionPattern3 = /INSERT INTO dbo\.iotPlatformDeviceModel[\s\S]*?(?=\n\s*COMMIT TRAN;)/;
+    
+    if (platformSectionPattern1.test(updatedSqlText)) {
+      updatedSqlText = updatedSqlText.replace(platformSectionPattern1, completePlatformSection + '\n\n    ');
+    } else if (platformSectionPattern2.test(updatedSqlText)) {
+      updatedSqlText = updatedSqlText.replace(platformSectionPattern2, completePlatformSection + '\n\n    ');
+    } else if (platformSectionPattern3.test(updatedSqlText)) {
+      updatedSqlText = updatedSqlText.replace(platformSectionPattern3, completePlatformSection + '\n\n    ');
+    } else {
+      // If no pattern matches, insert before COMMIT TRAN
+      updatedSqlText = updatedSqlText.replace(/(\n\s*COMMIT TRAN;)/, `\n${completePlatformSection}\n\n$1`);
+    }
     
     // Update the primary platform ID in the initial INSERT statement (use first selected platform)
     const primaryPlatformId = selectedPlatformIds[0];
