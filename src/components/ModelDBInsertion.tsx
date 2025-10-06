@@ -1014,6 +1014,23 @@ ${attrValues};`;
                       />
                       <Label htmlFor={`attr-response-${index}`}>Inkludera i svar</Label>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor={`attr-notif-${index}`}>Notifieringstyp</Label>
+                      <Select
+                        value={attr.notificationType}
+                        onValueChange={(value) => updateAttribute(index, 'notificationType', value)}
+                      >
+                        <SelectTrigger data-testid={`select-notification-type-${index}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="M">M - Measurement</SelectItem>
+                          <SelectItem value="A">A - Alert</SelectItem>
+                          <SelectItem value="S">S - Status</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               ))}
