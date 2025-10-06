@@ -123,6 +123,75 @@ export const ModelDBInsertion = () => {
     return text.replace(/""/g, '"');
   };
 
+  const isJsonMalformed = (text: string): boolean => {
+    if (!text.trim()) return false;
+    
+    try {
+      JSON.parse(text);
+      return false; // Valid JSON
+    } catch {
+      // Check for common malformed patterns
+      const hasMissingQuotes = /:\s*string|:\s*double|:\s*integer|:\s*boolean|:\s*float/i.test(text);
+      const hasUnquotedKeys = /[{,]\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:/g.test(text);
+      return hasMissingQuotes || hasUnquotedKeys;
+    }
+  };
+
+  const fixMalformedJson = (text: string): string => {
+    let fixed = text.trim();
+    
+    // Step 1: Add missing quotes to property names
+    // Match unquoted property names (word characters followed by colon)
+    fixed = fixed.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3');
+    
+    // Step 2: Fix missing closing quotes on property names
+    fixed = fixed.replace(/"\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '"$1":');
+    
+    // Step 3: Replace data type placeholders with example values
+    const typeReplacements: Record<string, string> = {
+      'string': '"example"',
+      'double': '0.0',
+      'float': '0.0',
+      'integer': '0',
+      'int': '0',
+      'boolean': 'false',
+      'bool': 'false',
+      'number': '0'
+    };
+    
+    // Replace data types with example values
+    for (const [type, value] of Object.entries(typeReplacements)) {
+      const regex = new RegExp(`:\\s*${type}\\s*([,}])`, 'gi');
+      fixed = fixed.replace(regex, `: ${value}$1`);
+    }
+    
+    // Step 4: Ensure proper JSON structure
+    // Remove any trailing commas before closing braces/brackets
+    fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
+    
+    return fixed;
+  };
+
+  const handleFixJson = () => {
+    const fixed = fixMalformedJson(decodedData);
+    
+    try {
+      // Validate the fixed JSON
+      JSON.parse(fixed);
+      setDecodedData(fixed);
+      toast({
+        title: "JSON fixad!",
+        description: "JSON-formatet har korrigerats",
+      });
+    } catch (error) {
+      toast({
+        title: "Kunde inte fixa JSON",
+        description: "JSON-strukturen är för trasig för automatisk reparation",
+        variant: "destructive",
+      });
+    }
+  };
+
   const convertToNumber = (value: string): number | string => {
     // Replace comma with period for European number format
     const normalized = value.replace(",", ".");
@@ -262,6 +331,24 @@ export const ModelDBInsertion = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    setDecoderName("");
+    setModelName("");
+    setSupplier("");
+    setDecodedData("");
+    setDeviceProfile("");
+    setResponse(null);
+    setAdditionalAttributes([]);
+    setUpdatedSql("");
+    setEditableMappedAttributes([]);
+    setSelectedPlatformIds([1]);
+    
+    toast({
+      title: "Formulär återställt",
+      description: "Alla fält har rensats",
+    });
   };
 
   const addNewAttribute = () => {
@@ -572,32 +659,61 @@ ${attrValues};`;
             
             <div className="space-y-2">
               <Label htmlFor="decodedData">Decoded Data (JSON)</Label>
-              <Textarea
-                id="decodedData"
-                data-testid="input-decoded-data"
-                placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
-                value={decodedData}
-                onChange={(e) => setDecodedData(cleanDoubleQuotes(e.target.value))}
-                className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
-              />
+              <div className="relative">
+                <Textarea
+                  id="decodedData"
+                  data-testid="input-decoded-data"
+                  placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
+                  value={decodedData}
+                  onChange={(e) => setDecodedData(cleanDoubleQuotes(e.target.value))}
+                  className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
+                />
+                {isJsonMalformed(decodedData) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleFixJson}
+                    className="absolute top-2 right-2 bg-background/95 hover:bg-accent/20 border-accent/50"
+                    data-testid="button-fix-json"
+                  >
+                    <Wand2 className="w-3 h-3 mr-1" />
+                    Fix JSON
+                  </Button>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Obs: Dubbla citattecken ("") ersätts automatiskt med enkla ("). Numeriska värden med kommatecken (t.ex. "35,0") konverteras automatiskt till tal
               </p>
             </div>
             
-            <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent/80 glow-accent" data-testid="button-generate-sql">
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  Bearbetar...
-                </>
-              ) : (
-                <>
-                  <Database />
-                  Genera SQL
-                </>
-              )}
-            </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={handleReset}
+                disabled={loading}
+                className="w-full"
+                data-testid="button-reset-form"
+              >
+                <Trash2 className="w-4 h-4" />
+                Återställ
+              </Button>
+              
+              <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent/80 glow-accent" data-testid="button-generate-sql">
+                {loading ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Bearbetar...
+                  </>
+                ) : (
+                  <>
+                    <Database />
+                    Genera SQL
+                  </>
+                )}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
