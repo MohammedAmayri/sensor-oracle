@@ -1,0 +1,88 @@
+{
+  "sql": "/* =======================================================================\r\n   Device Model:   Adeunis \u00B7 Adeunis ARF8180BA\r\n   Decoder:        DecoderAdeunisARF8180BA\r\n   ThingPark ID:   ADRF/TempA.1.0.2_EU\r\n   ======================================================================= */\r\n\r\nSET NOCOUNT ON;\r\n\r\nDECLARE @deviceModelId int;\r\nDECLARE @iotPlatformDeviceModelId int;\r\n\r\n--1. ====================================================================================================================\r\nINSERT INTO dbo.deviceModel\r\n                           (   deviceModelName\r\n                           ,   deviceModelVersion\r\n                           ,   deviceModelSupplier\r\n                           ,   iotPlatformId\r\n                           ,   decoderFunctionName\r\n                           ,   display\r\n                           )\r\nVALUES\r\n(\r\nN\u0027Adeunis ARF8180BA\u0027,\r\nNULL,\r\nN\u0027Adeunis\u0027,\r\n1,\r\nN\u0027DecoderAdeunisARF8180BA\u0027,\r\n1\r\n);\r\n\r\nSET @deviceModelId = SCOPE_IDENTITY();\r\n\r\n--FrameCounter\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n6,\r\nN\u0027FrameCounter\u0027,\r\nN\u0027Payloadnummer\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022number\u0022, \u0022description\u0022: \u0022M\u00E4tv\u00E4rde\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00270\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027Payloadnummer\u0027\r\n);\r\n\r\n--ExternalTemperature\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n10,\r\nN\u0027ExternalTemperature\u0027,\r\nN\u0027Extern temperatur i grader Celcius\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022number\u0022, \u0022description\u0022: \u0022M\u00E4tv\u00E4rde\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00271\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027Extern temperatur\u0027\r\n);\r\n\r\n--InternalTemperature\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n10,\r\nN\u0027InternalTemperature\u0027,\r\nN\u0027Intern temperatur (\u00B0C)\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022number\u0022, \u0022description\u0022: \u0022M\u00E4tv\u00E4rde\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00271\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027Intern temperatur\u0027\r\n);\r\n\r\n--ExternalSensor\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n14,\r\nN\u0027ExternalSensor\u0027,\r\nN\u0027External Sensor\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022string\u0022, \u0022description\u0022: \u0022Text\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00271\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027External Sensor\u0027\r\n);\r\n\r\n--InternalSensor\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n14,\r\nN\u0027InternalSensor\u0027,\r\nN\u0027Internal Sensor\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022string\u0022, \u0022description\u0022: \u0022Text\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00271\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027Internal Sensor\u0027\r\n);\r\n\r\n--LowBattery\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n14,\r\nN\u0027LowBattery\u0027,\r\nN\u0027L\u00E5gt batteriv\u00E4rde\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022string\u0022, \u0022description\u0022: \u0022Text\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00271\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027Batterivarning\u0027\r\n);\r\n\r\n--RegisterIdentifier\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n14,\r\nN\u0027RegisterIdentifier\u0027,\r\nN\u0027Register Identifier\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022number\u0022, \u0022description\u0022: \u0022M\u00E4tv\u00E4rde\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00271\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027Register Identifier\u0027\r\n);\r\n\r\n--UplinkType\r\nINSERT INTO dbo.deviceModelAttribute\r\n                           (  deviceModelId\r\n                           ,   dataAttributeId\r\n                           ,   attributeName\r\n                           ,   attributeDescription\r\n                           ,   attributeValueList\r\n                           ,   includeInResponse\r\n                           ,                          notificationType\r\n                           ,                          triggerLogic\r\n                           ,                          triggerValue\r\n                           ,   attributeFriendlyName\r\n                           )\r\nVALUES\r\n(\r\n@deviceModelId,\r\n14,\r\nN\u0027UplinkType\u0027,\r\nN\u0027Payloadtyp uplink\u0027,\r\nN\u0027[ { \u0022value\u0022: \u0022string\u0022, \u0022description\u0022: \u0022Text\u0022, \u0022selectable\u0022: false } ]\u0027,\r\n\u00271\u0027,\r\n\u0027M\u0027,\r\nNULL,\r\nNULL,\r\nN\u0027Payloadtyp\u0027\r\n);\r\n\r\nINSERT INTO dbo.iotPlatformDeviceModel\r\n                           (  iotPlatformId\r\n                           ,   deviceModelId\r\n                           )\r\nVALUES\r\n(\r\n1,\r\n@deviceModelId\r\n);\r\n\r\nSET @iotPlatformDeviceModelId = SCOPE_IDENTITY();\r\n\r\nINSERT INTO dbo.iotDeviceModelTag\r\n                           (  iotPlatformDeviceModelId\r\n                           ,   tag\r\n                           ,   [value]\r\n                           )\r\nVALUES\r\n(\r\n@iotPlatformDeviceModelId,\r\n\u0027DeviceModelID\u0027,\r\n\u0027{\u0022OTAA\u0022: \u0022ADRF/TempA.1.0.2_EU\u0022, \u0022ABP\u0022: \u0022ADRF/TempA.1.0.2_EU\u0022}\u0027\r\n);\r\n\r\nSELECT DISTINCT notificationType\r\nFROM dbo.deviceModelAttribute;\r\n\r\n",
+  "unknownKeys": [
+    "InternalSensor",
+    "ExternalSensor",
+    "RegisterIdentifier"
+  ],
+  "mapped": [
+    {
+      "attributeName": "UplinkType",
+      "dataAttributeId": 14,
+      "valueKind": "string",
+      "friendlyName": "Payloadtyp",
+      "description": "Payloadtyp uplink",
+      "includeInResponse": true,
+      "notificationType": "M"
+    },
+    {
+      "attributeName": "FrameCounter",
+      "dataAttributeId": 6,
+      "valueKind": "number",
+      "friendlyName": "Payloadnummer",
+      "description": "Payloadnummer",
+      "includeInResponse": false,
+      "notificationType": "M"
+    },
+    {
+      "attributeName": "LowBattery",
+      "dataAttributeId": 14,
+      "valueKind": "string",
+      "friendlyName": "Batterivarning",
+      "description": "L\u00E5gt batteriv\u00E4rde",
+      "includeInResponse": true,
+      "notificationType": "M"
+    },
+    {
+      "attributeName": "InternalSensor",
+      "dataAttributeId": 14,
+      "valueKind": "string",
+      "friendlyName": "Internal Sensor",
+      "description": "Internal Sensor",
+      "includeInResponse": true,
+      "notificationType": "M"
+    },
+    {
+      "attributeName": "InternalTemperature",
+      "dataAttributeId": 10,
+      "valueKind": "number",
+      "friendlyName": "Intern temperatur",
+      "description": "Intern temperatur (\u00B0C)",
+      "includeInResponse": true,
+      "notificationType": "M"
+    },
+    {
+      "attributeName": "ExternalSensor",
+      "dataAttributeId": 14,
+      "valueKind": "string",
+      "friendlyName": "External Sensor",
+      "description": "External Sensor",
+      "includeInResponse": true,
+      "notificationType": "M"
+    },
+    {
+      "attributeName": "RegisterIdentifier",
+      "dataAttributeId": 14,
+      "valueKind": "number",
+      "friendlyName": "Register Identifier",
+      "description": "Register Identifier",
+      "includeInResponse": true,
+      "notificationType": "M"
+    },
+    {
+      "attributeName": "ExternalTemperature",
+      "dataAttributeId": 10,
+      "valueKind": "string",
+      "friendlyName": "Extern temperatur",
+      "description": "Extern temperatur i grader Celcius",
+      "includeInResponse": true,
+      "notificationType": "M"
+    }
+  ],
+  "templateSource": {
+    "builtinCount": 15,
+    "csvCount": 590,
+    "csvPath": "C:\\home\\site\\wwwroot\\attributesDeviceModel.csv",
+    "loadedFromCsv": true
+  }
+}
