@@ -506,20 +506,25 @@ ${attrValues};`;
     const completePlatformSection = platformLinkingDeclaration + '\n' + platformLinkingSections;
     
     // Replace all platform linking sections with new ones
-    // Try multiple patterns to find where to insert the platform linking
-    const platformSectionPattern1 = /\/\* ---- Link to.*?(?=\n\s*COMMIT TRAN;)/s;
-    const platformSectionPattern2 = /DECLARE @iotPlatformDeviceModelId int;[\s\S]*?(?=\n\s*COMMIT TRAN;)/;
-    const platformSectionPattern3 = /INSERT INTO dbo\.iotPlatformDeviceModel[\s\S]*?(?=\n\s*COMMIT TRAN;)/;
+    // Pattern to match existing platform insertion blocks (from first INSERT INTO iotPlatformDeviceModel to last iotDeviceModelTag insertion)
+    const existingPlatformPattern = /INSERT INTO dbo\.iotPlatformDeviceModel[\s\S]*?INSERT INTO dbo\.iotDeviceModelTag[\s\S]*?;/;
     
-    if (platformSectionPattern1.test(updatedSqlText)) {
-      updatedSqlText = updatedSqlText.replace(platformSectionPattern1, completePlatformSection + '\n\n    ');
-    } else if (platformSectionPattern2.test(updatedSqlText)) {
-      updatedSqlText = updatedSqlText.replace(platformSectionPattern2, completePlatformSection + '\n\n    ');
-    } else if (platformSectionPattern3.test(updatedSqlText)) {
-      updatedSqlText = updatedSqlText.replace(platformSectionPattern3, completePlatformSection + '\n\n    ');
+    if (existingPlatformPattern.test(updatedSqlText)) {
+      // Replace existing platform sections
+      updatedSqlText = updatedSqlText.replace(existingPlatformPattern, completePlatformSection.trim());
     } else {
-      // If no pattern matches, insert before COMMIT TRAN
-      updatedSqlText = updatedSqlText.replace(/(\n\s*COMMIT TRAN;)/, `\n${completePlatformSection}\n\n$1`);
+      // No existing platform section found - insert before the final SELECT statements or at the end
+      const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/;
+      const beforeCommitPattern = /(\n\s*COMMIT TRAN;)/;
+      
+      if (beforeSelectPattern.test(updatedSqlText)) {
+        updatedSqlText = updatedSqlText.replace(beforeSelectPattern, `\n\n${completePlatformSection}\n$1`);
+      } else if (beforeCommitPattern.test(updatedSqlText)) {
+        updatedSqlText = updatedSqlText.replace(beforeCommitPattern, `\n${completePlatformSection}\n\n$1`);
+      } else {
+        // Append at the end
+        updatedSqlText = updatedSqlText.trim() + '\n\n' + completePlatformSection;
+      }
     }
     
     // Update the primary platform ID in the initial INSERT statement (use first selected platform)
