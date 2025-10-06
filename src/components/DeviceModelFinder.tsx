@@ -50,6 +50,80 @@ export const DeviceModelFinder = () => {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<DeviceModelResponse | null>(null);
 
+  const isJsonMalformed = (text: string): boolean => {
+    if (!text.trim()) return false;
+    
+    try {
+      JSON.parse(text);
+      return false; // Valid JSON
+    } catch {
+      // Check for common malformed patterns
+      const hasMissingQuotes = /:\s*string|:\s*double|:\s*integer|:\s*boolean|:\s*float/i.test(text);
+      const hasUnquotedKeys = /[{,]\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:/g.test(text);
+      return hasMissingQuotes || hasUnquotedKeys;
+    }
+  };
+
+  const fixMalformedJson = (text: string): string => {
+    let fixed = text.trim();
+    
+    // Step 1: Add missing quotes to property names
+    // Match unquoted property names (word characters followed by colon)
+    fixed = fixed.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3');
+    
+    // Step 2: Fix missing closing quotes on property names
+    fixed = fixed.replace(/"\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '"$1":');
+    
+    // Step 3: Replace data type placeholders with example values
+    const typeReplacements: Record<string, string> = {
+      'string': '"example"',
+      'double': '0.0',
+      'float': '0.0',
+      'integer': '0',
+      'int': '0',
+      'boolean': 'false',
+      'bool': 'false',
+      'number': '0'
+    };
+    
+    // Replace data types with example values
+    for (const [type, value] of Object.entries(typeReplacements)) {
+      const regex = new RegExp(`:\\s*${type}\\s*([,}\\n])`, 'gi');
+      fixed = fixed.replace(regex, `: ${value}$1`);
+    }
+    
+    // Step 4: Add missing commas between properties
+    // Look for patterns where a value is followed by a newline and then a quote (next property)
+    // This handles: value\n"nextProperty" -> value,\n"nextProperty"
+    fixed = fixed.replace(/(["\d}\]false|true|null])\s*\n\s*(")/g, '$1,\n$2');
+    
+    // Step 5: Ensure proper JSON structure
+    // Remove any trailing commas before closing braces/brackets
+    fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
+    
+    return fixed;
+  };
+
+  const handleFixJson = () => {
+    const fixed = fixMalformedJson(jsonInput);
+    
+    try {
+      // Validate the fixed JSON
+      JSON.parse(fixed);
+      setJsonInput(fixed);
+      toast({
+        title: "JSON fixad!",
+        description: "JSON-formatet har korrigerats",
+      });
+    } catch (error) {
+      toast({
+        title: "Kunde inte fixa JSON",
+        description: "JSON-strukturen är för trasig för automatisk reparation",
+        variant: "destructive",
+      });
+    }
+  };
+
   const extractFromJson = (jsonStr: string): { supplier: string; model: string } | null => {
     try {
       const data = JSON.parse(jsonStr);
@@ -199,6 +273,18 @@ export const DeviceModelFinder = () => {
                   <p className="text-xs text-muted-foreground">
                     JSON måste innehålla fält som 'supplier' och 'model' (eller liknande varianter)
                   </p>
+                  {isJsonMalformed(jsonInput) && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleFixJson}
+                      data-testid="button-fix-json"
+                      className="mt-2"
+                    >
+                      Fixa JSON
+                    </Button>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>

@@ -147,7 +147,12 @@ export const ModelDBInsertion = () => {
     // Step 2: Fix missing closing quotes on property names
     fixed = fixed.replace(/"\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '"$1":');
     
-    // Step 3: Replace data type placeholders with example values
+    // Step 3: Add missing commas between properties (BEFORE type replacement)
+    // Match: any word (like string/double/integer) or value, followed by newline and quote
+    // This handles both data types and actual values
+    fixed = fixed.replace(/([a-zA-Z0-9_]+|"[^"]*"|true|false|null|\d+\.?\d*)\s*\n\s*(")/g, '$1,\n$2');
+    
+    // Step 4: Replace data type placeholders with example values
     const typeReplacements: Record<string, string> = {
       'string': '"example"',
       'double': '0.0',
@@ -161,14 +166,9 @@ export const ModelDBInsertion = () => {
     
     // Replace data types with example values
     for (const [type, value] of Object.entries(typeReplacements)) {
-      const regex = new RegExp(`:\\s*${type}\\s*([,}\\n])`, 'gi');
-      fixed = fixed.replace(regex, `: ${value}$1`);
+      const regex = new RegExp(`:\\s*${type}\\b`, 'gi');
+      fixed = fixed.replace(regex, `: ${value}`);
     }
-    
-    // Step 4: Add missing commas between properties
-    // Look for patterns where a value is followed by a newline and then a quote (next property)
-    // This handles: value\n"nextProperty" -> value,\n"nextProperty"
-    fixed = fixed.replace(/(["\d}\]false|true|null])\s*\n\s*(")/g, '$1,\n$2');
     
     // Step 5: Ensure proper JSON structure
     // Remove any trailing commas before closing braces/brackets
