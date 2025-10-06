@@ -220,20 +220,20 @@ export const ModelDBInsertion = () => {
   };
 
   const formatSQL = (sql: string): string => {
-    // Basic SQL formatting
+    // Basic SQL formatting with word boundaries to avoid breaking words
     return sql
       .replace(/\r\n/g, "\n")
       .replace(/;/g, ";\n")
-      .replace(/BEGIN/gi, "\nBEGIN")
-      .replace(/END/gi, "\nEND")
-      .replace(/SELECT/gi, "\nSELECT")
-      .replace(/FROM/gi, "\nFROM")
-      .replace(/WHERE/gi, "\nWHERE")
-      .replace(/INSERT INTO/gi, "\nINSERT INTO")
-      .replace(/VALUES/gi, "\nVALUES")
-      .replace(/UPDATE/gi, "\nUPDATE")
-      .replace(/SET/gi, "\nSET")
-      .replace(/DECLARE/gi, "\nDECLARE")
+      .replace(/\bBEGIN\b/gi, "\nBEGIN")
+      .replace(/\bEND\b/gi, "\nEND")
+      .replace(/\bSELECT\b/gi, "\nSELECT")
+      .replace(/\bFROM\b/gi, "\nFROM")
+      .replace(/\bWHERE\b/gi, "\nWHERE")
+      .replace(/\bINSERT INTO\b/gi, "\nINSERT INTO")
+      .replace(/\bVALUES\b/gi, "\nVALUES")
+      .replace(/\bUPDATE\b/gi, "\nUPDATE")
+      .replace(/\bSET\b/gi, "\nSET")
+      .replace(/\bDECLARE\b/gi, "\nDECLARE")
       .trim();
   };
 
