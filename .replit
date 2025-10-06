@@ -7,7 +7,7 @@ channel = "stable-25_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npm", "run", "preview"]
+run = ["sh", "-c", "node server.js & npm run preview"]
 build = ["npm", "run", "build"]
 
 [workflows]
