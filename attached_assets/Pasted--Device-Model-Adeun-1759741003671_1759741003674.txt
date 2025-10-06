@@ -1,0 +1,319 @@
+/* =======================================================================
+   Device Model:   Adeunis · Adeunis ARF8180BA
+   Decoder:        DecoderAdeunisARF8180BA
+   ThingPark ID:   ADRF/TempA.1.0.2_EU
+   ======================================================================= */
+
+
+SET NOCOUNT ON;
+
+
+
+DECLARE @deviceModelId int;
+
+
+DECLARE @iotPlatformDeviceModelId int;
+
+
+--1. ====================================================================================================================
+
+INSERT INTO dbo.deviceModel
+                           (   deviceModelName
+                           ,   deviceModelVersion
+                           ,   deviceModelSupplier
+                           ,   iotPlatformId
+                           ,   decoderFunctionName
+                           ,   display
+                           )
+
+VALUES
+(
+N'Adeunis ARF8180BA',
+NULL,
+N'Adeunis',
+1,
+N'DecoderAdeunisARF8180BA',
+1
+);
+
+
+
+SET @deviceModelId = SCOPE_IDENTITY();
+
+
+--FrameCounter
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+6,
+N'FrameCounter',
+N'Payloadnummer',
+N'[ { "value": "number", "description": "Mätvärde", "selectable": false } ]',
+'0',
+'M',
+NULL,
+NULL,
+N'Payloadnummer'
+);
+
+
+--ExternalTemperature
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+10,
+N'ExternalTemperature',
+N'Extern temperatur i grader Celcius',
+N'[ { "value": "number", "description": "Mätvärde", "selectable": false } ]',
+'1',
+'M',
+NULL,
+NULL,
+N'Extern temperatur'
+);
+
+
+--InternalTemperature
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+10,
+N'InternalTemperature',
+N'Intern temperatur (°C)',
+N'[ { "value": "number", "description": "Mätvärde", "selectable": false } ]',
+'1',
+'M',
+NULL,
+NULL,
+N'Intern temperatur'
+);
+
+
+--ExternalSensor
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+14,
+N'ExternalSensor',
+N'External Sensor',
+N'[ { "value": "string", "description": "Text", "selectable": false } ]',
+'1',
+'M',
+NULL,
+NULL,
+N'External Sensor'
+);
+
+
+--InternalSensor
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+14,
+N'InternalSensor',
+N'Internal Sensor',
+N'[ { "value": "string", "description": "Text", "selectable": false } ]',
+'1',
+'M',
+NULL,
+NULL,
+N'Internal Sensor'
+);
+
+
+--LowBattery
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+14,
+N'LowBattery',
+N'Lågt batterivärde',
+N'[ { "value": "string", "description": "Text", "selectable": false } ]',
+'1',
+'M',
+NULL,
+NULL,
+N'Batterivarning'
+);
+
+
+--RegisterIdentifier
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+14,
+N'RegisterIdentifier',
+N'Register Identifier',
+N'[ { "value": "number", "description": "Mätvärde", "selectable": false } ]',
+'1',
+'M',
+NULL,
+NULL,
+N'Register Identifier'
+);
+
+
+--UplinkType
+
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+14,
+N'UplinkType',
+N'Payloadtyp uplink',
+N'[ { "value": "string", "description": "Text", "selectable": false } ]',
+'1',
+'M',
+NULL,
+NULL,
+N'Payloadtyp'
+);
+
+
+
+INSERT INTO dbo.iotPlatformDeviceModel
+                           (  iotPlatformId
+                           ,   deviceModelId
+                           )
+
+VALUES
+(
+1,
+@deviceModelId
+);
+
+
+
+SET @iotPlatformDeviceModelId = SCOPE_IDENTITY();
+
+
+
+INSERT INTO dbo.iotDeviceModelTag
+                           (  iotPlatformDeviceModelId
+                           ,   tag
+                           ,   [value]
+                           )
+
+VALUES
+(
+@iotPlatformDeviceModelId,
+'DeviceModelID',
+'{"OTAA": "ADRF/TempA.1.0.2_EU", "ABP": "ADRF/TempA.1.0.2_EU"}'
+);
+
+
+
+SELECT DISTINCT notificationType
+
+FROM dbo.deviceModelAttribute;
