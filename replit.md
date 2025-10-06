@@ -46,8 +46,18 @@ src/
    - AI-driven intelligence for device discovery
 
 2. **Model DB Insertion (Modell DB-infogning)**
-   - Interface for inserting model information into database
-   - Form-based data entry
+   - Streamlined single-form interface with all required fields
+   - Fields: Model Name, Supplier, Decoder Name, Device Profile, Decoded Data (JSON)
+   - Automatic JSON building from form fields
+   - Smart malformed JSON detection and repair:
+     - Detects missing quotes on property names
+     - Detects data type placeholders (string, double, integer, etc.)
+     - "Fix JSON" button appears automatically when malformed JSON is detected
+     - Auto-fixes: adds missing quotes, replaces type placeholders with example values
+   - Reset button to clear all form fields
+   - Multi-platform SQL generation (ThingPark, Radonova, Chirpstack, Kameror MKB Net, Netmore)
+   - Editable attribute mappings with full control
+   - Platform-specific SQL formatting
 
 ## Configuration
 
@@ -83,6 +93,13 @@ src/
 - All dependencies managed via package.json
 
 ## Recent Changes
+- **2025-10-06:** Enhanced Model DB Insertion functionality
+  - Added smart malformed JSON detection and automatic repair
+  - Implemented "Fix JSON" button that appears when JSON needs fixing
+  - Auto-fixes missing quotes and replaces data type placeholders
+  - Added reset button to clear all form fields
+  - Streamlined form with all fields in single interface (removed separate reformat section)
+  
 - **2025-10-02:** Initial Replit setup
   - Configured Vite for Replit environment (port 5000, host 0.0.0.0)
   - Set up workflow for development server
