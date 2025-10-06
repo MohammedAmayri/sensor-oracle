@@ -2,49 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Eliot Admin Dashboard Design System - Inspired by Pingday AB */
 
 @layer base {
   :root {
-    --background: 222 32% 8%;
-    --foreground: 220 40% 96%;
+    --background: 180 35% 92%;
+    --foreground: 200 20% 20%;
 
-    --surface: 226 30% 12%;
-    --card: 226 28% 18%;
-    --card-foreground: 220 40% 96%;
+    --card: 0 0% 100%;
+    --card-foreground: 200 20% 20%;
 
-    --popover: 226 28% 18%;
-    --popover-foreground: 220 40% 96%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 20% 20%;
 
-    --primary: 258 68% 56%;
-    --primary-foreground: 220 40% 96%;
+    --primary: 180 45% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 200 60% 45%;
-    --secondary-foreground: 220 40% 96%;
+    --secondary: 180 35% 55%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 226 30% 12%;
-    --muted-foreground: 223 22% 65%;
+    --muted: 180 20% 88%;
+    --muted-foreground: 200 15% 45%;
 
-    --accent: 167 65% 48%;
-    --accent-foreground: 220 40% 96%;
+    --accent: 180 45% 45%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 220 40% 96%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 225 25% 22%;
-    --input: 225 25% 22%;
-    --ring: 258 68% 56%;
+    --border: 180 20% 85%;
+    --input: 180 20% 85%;
+    --ring: 180 45% 45%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --glow-primary: 258 68% 56%;
-    --glow-secondary: 200 60% 45%;
-    --glow-accent: 167 65% 48%;
-    --shadow-glow: 0 0 30px hsl(var(--glow-primary) / 0.3);
-    --shadow-glow-secondary: 0 0 25px hsl(var(--glow-secondary) / 0.25);
-    --shadow-glow-accent: 0 0 20px hsl(var(--glow-accent) / 0.2);
+    --teal-primary: 180 45% 45%;
+    --teal-light: 180 35% 65%;
+    --teal-gradient-start: 180 50% 48%;
+    --teal-gradient-end: 180 40% 55%;
   }
 }
 
@@ -56,39 +51,54 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-image: 
-      radial-gradient(at 0% 0%, hsl(258 68% 18% / 0.15) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, hsl(200 60% 18% / 0.1) 0px, transparent 50%);
+    background: linear-gradient(135deg, hsl(180 50% 50%) 0%, hsl(180 40% 60%) 100%);
+    background-attachment: fixed;
   }
 
-  .glow-text {
-    text-shadow: 
-      0 0 20px hsl(var(--glow-primary) / 0.4),
-      0 0 40px hsl(var(--glow-secondary) / 0.2);
+  .eliot-card {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
   }
 
-  .glow-border {
-    box-shadow: 
-      0 0 20px hsl(var(--glow-primary) / 0.2),
-      0 4px 24px hsl(var(--glow-primary) / 0.15);
+  .eliot-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 
-  .glow-accent {
-    box-shadow: 
-      0 0 20px hsl(var(--glow-accent) / 0.3),
-      0 4px 24px hsl(var(--glow-accent) / 0.2);
+  .eliot-header {
+    background: hsl(var(--teal-primary));
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem 0.5rem 0 0;
   }
 
-  .glass-card {
-    background: linear-gradient(135deg, hsl(226 30% 18% / 0.7), hsl(226 28% 14% / 0.5));
-    backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--border) / 0.5);
-    box-shadow: 
-      0 8px 32px hsl(0 0% 0% / 0.4),
-      inset 0 1px 0 hsl(220 40% 96% / 0.1);
+  .eliot-sidebar {
+    background: white;
+    border-right: 1px solid hsl(var(--border));
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
   }
 
   .code-font {
     font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .glow-text {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .glow-border {
+    box-shadow: 0 2px 12px rgba(74, 155, 155, 0.2);
+  }
+
+  .glow-accent {
+    box-shadow: 0 2px 12px rgba(74, 155, 155, 0.25);
   }
 }
