@@ -107,31 +107,16 @@ const IOT_PLATFORMS: IotPlatform[] = [
 
 export const ModelDBInsertion = () => {
   const [decoderName, setDecoderName] = useState("");
+  const [modelName, setModelName] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [decodedData, setDecodedData] = useState("");
   const [deviceProfile, setDeviceProfile] = useState("");
-  const [reformattedJson, setReformattedJson] = useState("");
-  const [jsonInput, setJsonInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ModelDBResponse | null>(null);
   const [additionalAttributes, setAdditionalAttributes] = useState<AdditionalAttribute[]>([]);
   const [updatedSql, setUpdatedSql] = useState("");
   const [editableMappedAttributes, setEditableMappedAttributes] = useState<AdditionalAttribute[]>([]);
   const [selectedPlatformIds, setSelectedPlatformIds] = useState<number[]>([1]);
-
-  const extractSupplierAndModel = (decoderName: string): { supplier: string; modelName: string } => {
-    // Remove "Decoder" prefix if present
-    let cleanName = decoderName.replace(/^Decoder/i, "");
-    
-    // Extract supplier (first word starting with capital letter)
-    const supplierMatch = cleanName.match(/^([A-Z][a-z]+)/);
-    const supplier = supplierMatch ? supplierMatch[1] : "";
-    
-    // Extract model code (everything after supplier)
-    const modelCode = cleanName.substring(supplier.length);
-    const modelName = supplier + (modelCode ? " " + modelCode : "");
-    
-    return { supplier, modelName };
-  };
 
   const cleanDoubleQuotes = (text: string): string => {
     // Replace escaped double quotes ("") with single quotes (")
@@ -145,59 +130,31 @@ export const ModelDBInsertion = () => {
     return !isNaN(num) ? num : value;
   };
 
-  const handleReformat = () => {
-    if (!decoderName.trim() || !decodedData.trim() || !deviceProfile.trim()) {
-      toast({
-        title: "Saknade fält",
-        description: "Vänligen fyll i alla tre fält",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Parse the decoded data JSON
-      const parsedData = JSON.parse(decodedData);
-      
-      // Extract supplier and model name
-      const { supplier, modelName } = extractSupplierAndModel(decoderName);
-      
-      // Convert numeric strings to actual numbers
-      const processedData: Record<string, any> = {};
-      for (const [key, value] of Object.entries(parsedData)) {
-        if (typeof value === "string") {
-          // Try to convert numeric strings
-          const numValue = convertToNumber(value);
-          processedData[key] = numValue;
-        } else {
-          processedData[key] = value;
-        }
+  const buildJsonFromForm = () => {
+    // Parse the decoded data JSON
+    const parsedData = JSON.parse(decodedData);
+    
+    // Convert numeric strings to actual numbers
+    const processedData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(parsedData)) {
+      if (typeof value === "string") {
+        // Try to convert numeric strings
+        const numValue = convertToNumber(value);
+        processedData[key] = numValue;
+      } else {
+        processedData[key] = value;
       }
-      
-      // Create the reformatted object
-      const reformatted = {
-        decoderName: decoderName,
-        deviceProfile: deviceProfile,
-        modelName: modelName,
-        supplier: supplier,
-        useOpenAI: false,
-        decodedData: processedData
-      };
-      
-      const formattedJson = JSON.stringify(reformatted, null, 2);
-      setReformattedJson(formattedJson);
-      
-      toast({
-        title: "Omformaterad!",
-        description: "Data har omformaterats till rätt format",
-      });
-    } catch (error) {
-      toast({
-        title: "Ogiltigt format",
-        description: "Kunde inte tolka decoded data som JSON",
-        variant: "destructive",
-      });
     }
+    
+    // Create the JSON object
+    return {
+      decoderName: decoderName,
+      deviceProfile: deviceProfile,
+      modelName: modelName,
+      supplier: supplier,
+      useOpenAI: false,
+      decodedData: processedData
+    };
   };
 
   const normalizeNumbers = (str: string): string => {
@@ -240,10 +197,10 @@ export const ModelDBInsertion = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!jsonInput.trim()) {
+    if (!decoderName.trim() || !modelName.trim() || !supplier.trim() || !decodedData.trim() || !deviceProfile.trim()) {
       toast({
-        title: "Information saknas",
-        description: "Vänligen ange JSON-data",
+        title: "Saknade fält",
+        description: "Vänligen fyll i alla fält",
         variant: "destructive",
       });
       return;
@@ -251,11 +208,8 @@ export const ModelDBInsertion = () => {
 
     setLoading(true);
     try {
-      // Normalize numbers first
-      const normalizedInput = normalizeNumbers(jsonInput);
-      
-      // Parse to validate JSON
-      const parsedInput = JSON.parse(normalizedInput);
+      // Build JSON from form fields
+      const parsedInput = buildJsonFromForm();
 
       const res = await fetch('/api/model-db-insertion', {
         method: "POST",
@@ -339,16 +293,14 @@ export const ModelDBInsertion = () => {
   };
 
   const getMissingAttributes = (): string[] => {
-    if (!jsonInput) return [];
+    if (!decodedData) return [];
     
     try {
-      const normalizedInput = normalizeNumbers(jsonInput);
-      const parsedInput = JSON.parse(normalizedInput);
-      const decodedData = parsedInput.decodedData;
+      const parsedData = JSON.parse(decodedData);
       
-      if (!decodedData || typeof decodedData !== 'object') return [];
+      if (!parsedData || typeof parsedData !== 'object') return [];
       
-      const decodedKeys = Object.keys(decodedData);
+      const decodedKeys = Object.keys(parsedData);
       const existingAttributeNames = [
         ...editableMappedAttributes.map(attr => attr.attributeName),
         ...additionalAttributes.map(attr => attr.attributeName)
@@ -462,8 +414,13 @@ ${attrValues};`;
     }
     
     // Generate platform linking sections for all selected platforms (simple INSERT + SCOPE_IDENTITY format)
-    const platformLinkingDeclaration = `    /* ---- Link to IoT Platforms -------------------------------------------- */
+    // Only add DECLARE if it doesn't already exist in the SQL
+    const needsDeclaration = !updatedSqlText.includes('DECLARE @iotPlatformDeviceModelId');
+    const platformLinkingDeclaration = needsDeclaration 
+      ? `    /* ---- Link to IoT Platforms -------------------------------------------- */
     DECLARE @iotPlatformDeviceModelId int;
+`
+      : `    /* ---- Link to IoT Platforms -------------------------------------------- */
 `;
     
     const platformLinkingSections = selectedPlatformIds.map(platformId => {
@@ -553,123 +510,82 @@ ${attrValues};`;
 
   return (
     <div className="space-y-6">
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wand2 className="w-5 h-5 text-accent" />
-            Infoga modelldata
-          </CardTitle>
-          <CardDescription>Fyll i fälten nedan och omformatera till rätt JSON-struktur</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="decoderName">Decoder Name</Label>
-            <Input
-              id="decoderName"
-              data-testid="input-decoder-name"
-              placeholder="t.ex. DecoderAdeunisARF8180BA"
-              value={decoderName}
-              onChange={(e) => setDecoderName(e.target.value)}
-              className="bg-input/50 border-border/50 focus:border-primary"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="decodedData">Decoded Data (JSON)</Label>
-            <Textarea
-              id="decodedData"
-              data-testid="input-decoded-data"
-              placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
-              value={decodedData}
-              onChange={(e) => setDecodedData(cleanDoubleQuotes(e.target.value))}
-              className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
-            />
-            <p className="text-xs text-muted-foreground">
-              Obs: Dubbla citattecken ("") ersätts automatiskt med enkla ("). Numeriska värden med kommatecken (t.ex. "35,0") konverteras automatiskt till tal
-            </p>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="deviceProfile">Device Profile</Label>
-            <Input
-              id="deviceProfile"
-              data-testid="input-device-profile"
-              placeholder="t.ex. ADRF/TempA.1.0.2_EU"
-              value={deviceProfile}
-              onChange={(e) => setDeviceProfile(e.target.value)}
-              className="bg-input/50 border-border/50 focus:border-primary"
-            />
-          </div>
-          
-          <Button 
-            type="button" 
-            onClick={handleReformat}
-            data-testid="button-reformat"
-            className="w-full bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent/80 glow-accent"
-          >
-            <Wand2 className="w-4 h-4" />
-            Omformatera data
-          </Button>
-        </CardContent>
-      </Card>
-
-      {reformattedJson && (
-        <Card className="glass-card border-accent/30">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-accent" />
-                Omformaterad JSON
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                data-testid="button-copy-json"
-                onClick={() => {
-                  navigator.clipboard.writeText(reformattedJson);
-                  toast({
-                    title: "Kopierad!",
-                    description: "JSON kopierad till urklipp",
-                  });
-                }}
-              >
-                <Copy className="w-4 h-4" />
-                Kopiera
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-background/50 p-4 rounded-lg overflow-x-auto border border-accent/20">
-              <pre className="code-font text-xs text-foreground whitespace-pre-wrap" data-testid="text-reformatted-json">
-                {reformattedJson}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <Card className="glow-border">
         <CardHeader>
-          <CardTitle className="glow-text">Device Model DB Insertion</CardTitle>
-          <CardDescription>Generera SQL för infogning av enhetsmodell i databas</CardDescription>
+          <CardTitle className="glow-text flex items-center gap-2">
+            <Database className="w-5 h-5" />
+            Generera SQL för Device Model
+          </CardTitle>
+          <CardDescription>Fyll i fälten nedan och generera SQL för infogning av enhetsmodell i databas</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="modelName">Model Name</Label>
+                <Input
+                  id="modelName"
+                  data-testid="input-model-name"
+                  placeholder="t.ex. Adeunis ARF8180BA"
+                  value={modelName}
+                  onChange={(e) => setModelName(e.target.value)}
+                  className="bg-input/50 border-border/50 focus:border-primary"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="supplier">Supplier</Label>
+                <Input
+                  id="supplier"
+                  data-testid="input-supplier"
+                  placeholder="t.ex. Adeunis"
+                  value={supplier}
+                  onChange={(e) => setSupplier(e.target.value)}
+                  className="bg-input/50 border-border/50 focus:border-primary"
+                />
+              </div>
+            </div>
+            
             <div className="space-y-2">
-              <Label htmlFor="jsonInput">JSON-data</Label>
+              <Label htmlFor="decoderName">Decoder Name</Label>
+              <Input
+                id="decoderName"
+                data-testid="input-decoder-name"
+                placeholder="t.ex. DecoderAdeunisARF8180BA"
+                value={decoderName}
+                onChange={(e) => setDecoderName(e.target.value)}
+                className="bg-input/50 border-border/50 focus:border-primary"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="deviceProfile">Device Profile (ThingPark Model ID)</Label>
+              <Input
+                id="deviceProfile"
+                data-testid="input-device-profile"
+                placeholder="t.ex. ADRF/TempA.1.0.2_EU"
+                value={deviceProfile}
+                onChange={(e) => setDeviceProfile(e.target.value)}
+                className="bg-input/50 border-border/50 focus:border-primary"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="decodedData">Decoded Data (JSON)</Label>
               <Textarea
-                id="jsonInput"
-                data-testid="input-json-data"
-                placeholder='{"decoderName": "DecoderName", "deviceProfile": "...", ...}'
-                value={jsonInput}
-                onChange={(e) => setJsonInput(e.target.value)}
-                className="min-h-[200px] code-font text-sm bg-input border-primary/30 focus:border-primary"
+                id="decodedData"
+                data-testid="input-decoded-data"
+                placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
+                value={decodedData}
+                onChange={(e) => setDecodedData(cleanDoubleQuotes(e.target.value))}
+                className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
               />
               <p className="text-xs text-muted-foreground">
-                Obs: Tal med kommatecken kommer automatiskt normaliseras till punkter
+                Obs: Dubbla citattecken ("") ersätts automatiskt med enkla ("). Numeriska värden med kommatecken (t.ex. "35,0") konverteras automatiskt till tal
               </p>
             </div>
-            <Button type="submit" disabled={loading} className="w-full" data-testid="button-generate-sql">
+            
+            <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-accent to-accent/90 hover:from-accent/90 hover:to-accent/80 glow-accent" data-testid="button-generate-sql">
               {loading ? (
                 <>
                   <Loader2 className="animate-spin" />
@@ -678,7 +594,7 @@ ${attrValues};`;
               ) : (
                 <>
                   <Database />
-                  Generera SQL
+                  Genera SQL
                 </>
               )}
             </Button>
