@@ -425,11 +425,25 @@ export const ModelDBInsertion = () => {
       valueKind: "string"
     }));
 
-    setAdditionalAttributes([...additionalAttributes, ...newAttributes]);
+    // Filter out any duplicates that might already exist in additionalAttributes
+    const currentAttributeNames = additionalAttributes.map(attr => attr.attributeName);
+    const uniqueNewAttributes = newAttributes.filter(
+      newAttr => !currentAttributeNames.includes(newAttr.attributeName)
+    );
+
+    if (uniqueNewAttributes.length === 0) {
+      toast({
+        title: "Inga nya attribut",
+        description: "Attributen finns redan i listan",
+      });
+      return;
+    }
+
+    setAdditionalAttributes([...additionalAttributes, ...uniqueNewAttributes]);
 
     toast({
       title: "Attribut tillagda",
-      description: `${missingKeys.length} saknade attribut har lagts till`,
+      description: `${uniqueNewAttributes.length} saknade attribut har lagts till`,
     });
   };
 
@@ -498,7 +512,8 @@ export const ModelDBInsertion = () => {
     const hasTpModelVar = /DECLARE\s+@tpModel\b/i.test(originalSqlText);
 
     // ---- Remove all existing deviceModelAttribute INSERT statements (we'll recreate) ----
-    const attributeInsertPattern = /--[^\n]*\n\nINSERT INTO dbo\.deviceModelAttribute[\s\S]*?VALUES[\s\S]*?\([^)]*\);/g;
+    // More robust pattern that handles various whitespace scenarios
+    const attributeInsertPattern = /--[^\n]*\s*\n+\s*INSERT INTO dbo\.deviceModelAttribute[\s\S]*?VALUES[\s\S]*?\([^)]*\);/gi;
     updatedSqlText = updatedSqlText.replace(attributeInsertPattern, '');
 
     // ---- Generate new INSERTs for attributes ----
