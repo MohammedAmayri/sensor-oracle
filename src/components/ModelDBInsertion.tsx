@@ -477,7 +477,12 @@ export const ModelDBInsertion = () => {
 
     // Generate the INSERT INTO @attrs VALUES section
     const attrValues = allAttributes.map(attr => {
-      const valueListJson = `[\\n  { "value": "${attr.valueKind}", "description": "${attr.valueKind === 'number' ? 'Mätvärde' : 'Text'}", "selectable": false }\\n]`;
+      // Get the unit description from ATTRIBUTE_UNITS based on dataAttributeId
+      const unit = ATTRIBUTE_UNITS.find(u => u.id === attr.dataAttributeId);
+      const unitDescription = unit ? unit.unit : 'Unknown';
+      
+      // Build the attributeValueList JSON with proper description
+      const valueListJson = `[\\n  { "value": "${attr.valueKind}", "description": "${unitDescription}", "selectable": false }\\n]`;
       return `        (${attr.dataAttributeId}, N'${attr.attributeName}', N'${attr.description}', N'${valueListJson}', ${attr.includeInResponse ? 1 : 0}, '${attr.notificationType}', N'${attr.friendlyName}')`;
     }).join(',\n');
 
@@ -554,13 +559,30 @@ ${attrValues};`;
     
     const completePlatformSection = platformLinkingDeclaration + '\n' + platformLinkingSections;
     
+    // Extract existing @tpModel value to preserve it
+    const existingTpModelMatch = updatedSqlText.match(/DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'([^']*)'/);
+    const existingTpModelValue = existingTpModelMatch ? existingTpModelMatch[1] : null;
+    
     // Replace all platform linking sections with new ones
-    // Pattern to match existing platform insertion blocks (from first INSERT INTO iotPlatformDeviceModel to last iotDeviceModelTag insertion)
-    const existingPlatformPattern = /INSERT INTO dbo\.iotPlatformDeviceModel[\s\S]*?INSERT INTO dbo\.iotDeviceModelTag[\s\S]*?;/;
+    // Pattern to match ALL platform insertion blocks (use global flag to match all occurrences)
+    const existingPlatformPattern = /\/\*\s*----\s*Link to.*?INSERT INTO dbo\.iotPlatformDeviceModel[\s\S]*?INSERT INTO dbo\.iotDeviceModelTag[\s\S]*?;/g;
     
     if (existingPlatformPattern.test(updatedSqlText)) {
-      // Replace existing platform sections
-      updatedSqlText = updatedSqlText.replace(existingPlatformPattern, completePlatformSection.trim());
+      // Replace all existing platform sections
+      updatedSqlText = updatedSqlText.replace(existingPlatformPattern, '');
+      
+      // Now insert the new platform sections
+      const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/;
+      const beforeCommitPattern = /(\n\s*COMMIT TRAN;)/;
+      
+      if (beforeSelectPattern.test(updatedSqlText)) {
+        updatedSqlText = updatedSqlText.replace(beforeSelectPattern, `\n\n${completePlatformSection}\n$1`);
+      } else if (beforeCommitPattern.test(updatedSqlText)) {
+        updatedSqlText = updatedSqlText.replace(beforeCommitPattern, `\n${completePlatformSection}\n\n$1`);
+      } else {
+        // Append at the end
+        updatedSqlText = updatedSqlText.trim() + '\n\n' + completePlatformSection;
+      }
     } else {
       // No existing platform section found - insert before the final SELECT statements or at the end
       const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/;
@@ -582,6 +604,15 @@ ${attrValues};`;
       /\(.*deviceModelName.*deviceModelVersion.*deviceModelSupplier.*iotPlatformId.*decoderFunctionName.*display.*\)[\s\S]*?VALUES[\s\S]*?\(.*@name.*NULL.*@supplier.*\d+.*@decoder.*1.*\)/i,
       (match) => match.replace(/(@supplier,\s*)(\d+)/, `$1${primaryPlatformId}`)
     );
+    
+    // Preserve the existing @tpModel value if it exists
+    if (existingTpModelValue && selectedPlatformIds.includes(1)) {
+      // Only update if ThingPark is selected
+      updatedSqlText = updatedSqlText.replace(
+        /DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'[^']*'/,
+        `DECLARE @tpModel nvarchar(200) = N'${existingTpModelValue}'`
+      );
+    }
     
     setUpdatedSql(updatedSqlText);
 
