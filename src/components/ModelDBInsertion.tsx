@@ -475,29 +475,55 @@ export const ModelDBInsertion = () => {
       }))
     ];
 
-    // Generate the INSERT INTO @attrs VALUES section
-    const attrValues = allAttributes.map(attr => {
+    // Use the current SQL (either already updated, or the original from response)
+    let updatedSqlText = updatedSql || response.sql;
+    
+    // Remove all existing deviceModelAttribute INSERT statements
+    const attributeInsertPattern = /--[^\n]*\n\nINSERT INTO dbo\.deviceModelAttribute[\s\S]*?VALUES[\s\S]*?\([^)]*\);/g;
+    updatedSqlText = updatedSqlText.replace(attributeInsertPattern, '');
+    
+    // Generate new INSERT statements for all attributes
+    const newAttributeInserts = allAttributes.map(attr => {
       // Get the unit description from ATTRIBUTE_UNITS based on dataAttributeId
       const unit = ATTRIBUTE_UNITS.find(u => u.id === attr.dataAttributeId);
       const unitDescription = unit ? unit.unit : 'Unknown';
       
       // Build the attributeValueList JSON with proper description
-      const valueListJson = `[\\n  { "value": "${attr.valueKind}", "description": "${unitDescription}", "selectable": false }\\n]`;
-      return `        (${attr.dataAttributeId}, N'${attr.attributeName}', N'${attr.description}', N'${valueListJson}', ${attr.includeInResponse ? 1 : 0}, '${attr.notificationType}', N'${attr.friendlyName}')`;
-    }).join(',\n');
+      const valueListJson = `[ { "value": "${attr.valueKind}", "description": "${unitDescription}", "selectable": false } ]`;
+      
+      return `--${attr.attributeName}
 
-    // Update the SQL by replacing the VALUES section
-    // Use the current SQL (either already updated, or the original from response)
-    let updatedSqlText = updatedSql || response.sql;
+INSERT INTO dbo.deviceModelAttribute
+                           (  deviceModelId
+                           ,   dataAttributeId
+                           ,   attributeName
+                           ,   attributeDescription
+                           ,   attributeValueList
+                           ,   includeInResponse
+                           ,                          notificationType
+                           ,                          triggerLogic
+                           ,                          triggerValue
+                           ,   attributeFriendlyName
+                           )
+
+VALUES
+(
+@deviceModelId,
+${attr.dataAttributeId},
+N'${attr.attributeName}',
+N'${attr.description}',
+N'${valueListJson}',
+'${attr.includeInResponse ? 1 : 0}',
+'${attr.notificationType}',
+NULL,
+NULL,
+N'${attr.friendlyName}'
+);`;
+    }).join('\n\n\n');
     
-    // Find and replace the INSERT INTO @attrs VALUES section
-    const insertPattern = /INSERT INTO @attrs[\s\S]*?VALUES[\s\S]*?;/i;
-    const newInsert = `INSERT INTO @attrs
-    ( dataAttributeId, attributeName, attributeDescription, attributeValueList, includeInResponse, notificationType, attributeFriendlyName )
-    VALUES
-${attrValues};`;
-    
-    updatedSqlText = updatedSqlText.replace(insertPattern, newInsert);
+    // Insert the new attribute statements after SET @deviceModelId = SCOPE_IDENTITY();
+    const afterDeviceModelIdPattern = /(SET @deviceModelId = SCOPE_IDENTITY\(\);)/;
+    updatedSqlText = updatedSqlText.replace(afterDeviceModelIdPattern, `$1\n\n\n${newAttributeInserts}`);
     
     // Apply SQL cleanup to fix corruptions
     updatedSqlText = cleanSqlText(updatedSqlText);
