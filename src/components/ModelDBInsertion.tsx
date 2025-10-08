@@ -563,39 +563,31 @@ ${attrValues};`;
     const existingTpModelMatch = updatedSqlText.match(/DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'([^']*)'/);
     const existingTpModelValue = existingTpModelMatch ? existingTpModelMatch[1] : null;
     
-    // Replace all platform linking sections with new ones
-    // Pattern to match ALL platform insertion blocks (use global flag to match all occurrences)
-    const existingPlatformPattern = /\/\*\s*----\s*Link to.*?INSERT INTO dbo\.iotPlatformDeviceModel[\s\S]*?INSERT INTO dbo\.iotDeviceModelTag[\s\S]*?;/g;
+    // Remove ALL existing platform linking sections
+    // This pattern matches any iotPlatformDeviceModel + iotDeviceModelTag insertion pair
+    // It handles both formats: with comment headers (our format) and without (original server format)
+    const simplePlatformPattern = /(?:\/\*[^*]*\*\/\s*)?INSERT INTO dbo\.iotPlatformDeviceModel\s*\([^)]*\)\s*VALUES\s*\([^)]*@deviceModelId[^)]*\);?\s*(?:SET @iotPlatformDeviceModelId = SCOPE_IDENTITY\(\);)?\s*INSERT INTO dbo\.iotDeviceModelTag\s*\([^)]*\)\s*VALUES\s*\([^)]*'DeviceModelID'[^)]*\);?/gi;
     
-    if (existingPlatformPattern.test(updatedSqlText)) {
-      // Replace all existing platform sections
-      updatedSqlText = updatedSqlText.replace(existingPlatformPattern, '');
-      
-      // Now insert the new platform sections
-      const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/;
-      const beforeCommitPattern = /(\n\s*COMMIT TRAN;)/;
-      
-      if (beforeSelectPattern.test(updatedSqlText)) {
-        updatedSqlText = updatedSqlText.replace(beforeSelectPattern, `\n\n${completePlatformSection}\n$1`);
-      } else if (beforeCommitPattern.test(updatedSqlText)) {
-        updatedSqlText = updatedSqlText.replace(beforeCommitPattern, `\n${completePlatformSection}\n\n$1`);
-      } else {
-        // Append at the end
-        updatedSqlText = updatedSqlText.trim() + '\n\n' + completePlatformSection;
-      }
+    updatedSqlText = updatedSqlText.replace(simplePlatformPattern, '');
+    
+    // Also remove standalone "Link to IoT Platforms" comment headers and DECLARE statements that might be left over
+    updatedSqlText = updatedSqlText.replace(/\/\*\s*----\s*Link to IoT Platforms[^*]*\*\/\s*/g, '');
+    updatedSqlText = updatedSqlText.replace(/\s*DECLARE @iotPlatformDeviceModelId int;\s*(?=\n|$)/g, '');
+    
+    // Clean up any excessive blank lines (more than 2 consecutive newlines)
+    updatedSqlText = updatedSqlText.replace(/\n{3,}/g, '\n\n');
+    
+    // Insert the new platform sections before SELECT or COMMIT
+    const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/;
+    const beforeCommitPattern = /(\n\s*COMMIT TRAN;)/;
+    
+    if (beforeSelectPattern.test(updatedSqlText)) {
+      updatedSqlText = updatedSqlText.replace(beforeSelectPattern, `\n\n${completePlatformSection}\n$1`);
+    } else if (beforeCommitPattern.test(updatedSqlText)) {
+      updatedSqlText = updatedSqlText.replace(beforeCommitPattern, `\n${completePlatformSection}\n\n$1`);
     } else {
-      // No existing platform section found - insert before the final SELECT statements or at the end
-      const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/;
-      const beforeCommitPattern = /(\n\s*COMMIT TRAN;)/;
-      
-      if (beforeSelectPattern.test(updatedSqlText)) {
-        updatedSqlText = updatedSqlText.replace(beforeSelectPattern, `\n\n${completePlatformSection}\n$1`);
-      } else if (beforeCommitPattern.test(updatedSqlText)) {
-        updatedSqlText = updatedSqlText.replace(beforeCommitPattern, `\n${completePlatformSection}\n\n$1`);
-      } else {
-        // Append at the end
-        updatedSqlText = updatedSqlText.trim() + '\n\n' + completePlatformSection;
-      }
+      // Append at the end
+      updatedSqlText = updatedSqlText.trim() + '\n\n' + completePlatformSection;
     }
     
     // Update the primary platform ID in the initial INSERT statement (use first selected platform)
