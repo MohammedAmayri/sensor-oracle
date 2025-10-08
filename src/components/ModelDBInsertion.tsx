@@ -475,179 +475,194 @@ export const ModelDBInsertion = () => {
       }))
     ];
 
-    // Use the current SQL (either already updated, or the original from response)
-    let updatedSqlText = updatedSql || response.sql;
-    
-    // Remove all existing deviceModelAttribute INSERT statements
+    // Work on the current SQL (either already updated, or the original from response)
+    const originalSqlText = updatedSql || response.sql;
+    let updatedSqlText = originalSqlText;
+
+    // --- Capture originals BEFORE we remove anything ---
+    // 1) ThingPark DeviceModelID literal in the existing SQL (preferred if present)
+    const thingparkLiteralMatch = originalSqlText.match(
+      /INSERT\s+INTO\s+dbo\.iotDeviceModelTag[\s\S]*?VALUES\s*\([\s\S]*?@iotPlatformDeviceModelId[\s\S]*?'DeviceModelID'[\s,]*\r?\n\s*('(?:[^']|'')*')\s*\)/i
+    );
+    const thingparkLiteralFromSql = thingparkLiteralMatch?.[1] ?? null; // includes surrounding single quotes
+
+    // 2) "ThingPark ID: ..." from the header comment as a fallback
+    const headerTpIdMatch = originalSqlText.match(/ThingPark ID:\s*([^\r\n]+)/i);
+    const headerThingparkId = headerTpIdMatch?.[1]?.trim() ?? null;
+
+    // 3) Any declared @tpModel value (another fallback)
+    const declaredTpModelMatch = originalSqlText.match(/DECLARE\s+@tpModel\s+nvarchar\(200\)\s*=\s*N'([^']*)'/i);
+    const declaredTpModelValue = declaredTpModelMatch?.[1] ?? null;
+
+    // 4) Check if @tpModel exists at all
+    const hasTpModelVar = /DECLARE\s+@tpModel\b/i.test(originalSqlText);
+
+    // ---- Remove all existing deviceModelAttribute INSERT statements (we'll recreate) ----
     const attributeInsertPattern = /--[^\n]*\n\nINSERT INTO dbo\.deviceModelAttribute[\s\S]*?VALUES[\s\S]*?\([^)]*\);/g;
     updatedSqlText = updatedSqlText.replace(attributeInsertPattern, '');
-    
-    // Generate new INSERT statements for all attributes
+
+    // ---- Generate new INSERTs for attributes ----
     const newAttributeInserts = allAttributes.map(attr => {
-      // Get the unit description from ATTRIBUTE_UNITS based on dataAttributeId
       const unit = ATTRIBUTE_UNITS.find(u => u.id === attr.dataAttributeId);
       const unitDescription = unit ? unit.unit : 'Unknown';
-      
-      // Build the attributeValueList JSON with proper description
       const valueListJson = `[ { "value": "${attr.valueKind}", "description": "${unitDescription}", "selectable": false } ]`;
-      
+
       return `--${attr.attributeName}
 
-INSERT INTO dbo.deviceModelAttribute
-                           (  deviceModelId
-                           ,   dataAttributeId
-                           ,   attributeName
-                           ,   attributeDescription
-                           ,   attributeValueList
-                           ,   includeInResponse
-                           ,                          notificationType
-                           ,                          triggerLogic
-                           ,                          triggerValue
-                           ,   attributeFriendlyName
-                           )
+  INSERT INTO dbo.deviceModelAttribute
+                             (  deviceModelId
+                             ,   dataAttributeId
+                             ,   attributeName
+                             ,   attributeDescription
+                             ,   attributeValueList
+                             ,   includeInResponse
+                             ,                          notificationType
+                             ,                          triggerLogic
+                             ,                          triggerValue
+                             ,   attributeFriendlyName
+                             )
 
-VALUES
-(
-@deviceModelId,
-${attr.dataAttributeId},
-N'${attr.attributeName}',
-N'${attr.description}',
-N'${valueListJson}',
-'${attr.includeInResponse ? 1 : 0}',
-'${attr.notificationType}',
-NULL,
-NULL,
-N'${attr.friendlyName}'
-);`;
+  VALUES
+  (
+  @deviceModelId,
+  ${attr.dataAttributeId},
+  N'${attr.attributeName}',
+  N'${attr.description}',
+  N'${valueListJson}',
+  '${attr.includeInResponse ? 1 : 0}',
+  '${attr.notificationType}',
+  NULL,
+  NULL,
+  N'${attr.friendlyName}'
+  );`;
     }).join('\n\n\n');
-    
+
     // Insert the new attribute statements after SET @deviceModelId = SCOPE_IDENTITY();
     const afterDeviceModelIdPattern = /(SET @deviceModelId = SCOPE_IDENTITY\(\);)/;
     updatedSqlText = updatedSqlText.replace(afterDeviceModelIdPattern, `$1\n\n\n${newAttributeInserts}`);
-    
-    // Apply SQL cleanup to fix corruptions
+
+    // Apply SQL cleanup to fix known corruptions
     updatedSqlText = cleanSqlText(updatedSqlText);
-    
-    // Ensure @chirpstackDeviceModel declaration exists (after @tpModel declaration)
+
+    // Ensure @chirpstackDeviceModel declaration exists (after @tpModel declaration if present)
     if (!updatedSqlText.includes('DECLARE @chirpstackDeviceModel')) {
       updatedSqlText = updatedSqlText.replace(
         /(DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'[^']*';)/,
         `$1\n    DECLARE @chirpstackDeviceModel nvarchar(200) = @tpModel; -- change if ChirpStack differs`
       );
     }
-    
-    // Generate platform linking sections for all selected platforms (simple INSERT + SCOPE_IDENTITY format)
-    // Only add DECLARE if it doesn't already exist in the SQL
+
+    // ---- Build platform linking sections ----
+    // Remove ALL existing platform linking sections
+    const simplePlatformPattern = /(?:\/\*[^*]*\*\/\s*)?INSERT INTO dbo\.iotPlatformDeviceModel\s*\([^)]*\)\s*VALUES\s*\([^)]*@deviceModelId[^)]*\);?\s*(?:SET @iotPlatformDeviceModelId = SCOPE_IDENTITY\(\);)?\s*INSERT INTO dbo\.iotDeviceModelTag\s*\([^)]*\)\s*VALUES\s*\([^)]*'DeviceModelID'[^)]*\);?/gi;
+    updatedSqlText = updatedSqlText.replace(simplePlatformPattern, '');
+    // Also remove stray headers / DECLARE left over
+    updatedSqlText = updatedSqlText.replace(/\/\*\s*----\s*Link to IoT Platforms[^*]*\*\/\s*/g, '');
+    updatedSqlText = updatedSqlText.replace(/\s*DECLARE @iotPlatformDeviceModelId int;\s*(?=\n|$)/g, '');
+
+    // Platform block preamble (declare only once if not present)
     const needsDeclaration = !updatedSqlText.includes('DECLARE @iotPlatformDeviceModelId');
-    const platformLinkingDeclaration = needsDeclaration 
+    const platformLinkingDeclaration = needsDeclaration
       ? `    /* ---- Link to IoT Platforms -------------------------------------------- */
-    DECLARE @iotPlatformDeviceModelId int;
-`
+      DECLARE @iotPlatformDeviceModelId int;
+  `
       : `    /* ---- Link to IoT Platforms -------------------------------------------- */
-`;
-    
+  `;
+
     const platformLinkingSections = selectedPlatformIds.map(platformId => {
       const platform = IOT_PLATFORMS.find(p => p.id === platformId);
       const platformName = platform ? platform.name : `Platform ${platformId}`;
-      
-      // ThingPark (ID 1) uses JSON format with literal string interpolation
-      // All other platforms use @chirpstackDeviceModel variable
       const isThingPark = platformId === 1;
-      const valueExpression = isThingPark
-        ? `'{"OTAA": "' + @tpModel + '", "ABP": "' + @tpModel + '"}'`
-        : `@chirpstackDeviceModel`;
-      
+
+      // === IMPORTANT: preserve original literal for ThingPark if it existed ===
+      let valueExpression: string;
+      if (isThingPark) {
+        if (thingparkLiteralFromSql) {
+          // Keep EXACT original line, e.g.:
+          // '{\"OTAA\": \"msight_em500-lgt_RFGroup1_1.0.3a_A\", \"ABP\": \"msight_em500-lgt_RFGroup1_1.0.3a_A\"}'
+          valueExpression = thingparkLiteralFromSql; // already wrapped in single quotes
+        } else if (hasTpModelVar) {
+          // Fall back to @tpModel-based interpolation only if @tpModel exists
+          valueExpression = `'{"OTAA": "' + @tpModel + '", "ABP": "' + @tpModel + '"}'`;
+        } else {
+          // No @tpModel var: synthesize a literal from header or declared value if available
+          const literalId =
+            headerThingparkId ??
+            declaredTpModelValue ??
+            '';
+          const safeId = literalId.replace(/'/g, "''");
+          valueExpression = `'{"OTAA": "${safeId}", "ABP": "${safeId}"}'`;
+        }
+      } else {
+        valueExpression = `@chirpstackDeviceModel`;
+      }
+
       return `    /* ---- Link to ${platformName} (iotPlatformId = ${platformId}) ---------------------------- */
-    INSERT INTO dbo.iotPlatformDeviceModel
-                           (  iotPlatformId
-                           ,   deviceModelId
-                           )
-    VALUES
-    (
-    ${platformId},
-    @deviceModelId
-    );
+      INSERT INTO dbo.iotPlatformDeviceModel
+                             (  iotPlatformId
+                             ,   deviceModelId
+                             )
+      VALUES
+      (
+      ${platformId},
+      @deviceModelId
+      );
 
-    SET @iotPlatformDeviceModelId = SCOPE_IDENTITY();
+      SET @iotPlatformDeviceModelId = SCOPE_IDENTITY();
 
-    INSERT INTO dbo.iotDeviceModelTag
-                           (  iotPlatformDeviceModelId
-                           ,   tag
-                           ,   [value]
-                           )
-    VALUES
-    (
-    @iotPlatformDeviceModelId,
-    'DeviceModelID',
-    ${valueExpression}
-    );`;
+      INSERT INTO dbo.iotDeviceModelTag
+                             (  iotPlatformDeviceModelId
+                             ,   tag
+                             ,   [value]
+                             )
+      VALUES
+      (
+      @iotPlatformDeviceModelId,
+      'DeviceModelID',
+      ${valueExpression}
+      );`;
     }).join('\n\n');
-    
+
     const completePlatformSection = platformLinkingDeclaration + '\n' + platformLinkingSections;
-    
-    // Extract existing @tpModel value to preserve it
-    const existingTpModelMatch = updatedSqlText.match(/DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'([^']*)'/);
-    const existingTpModelValue = existingTpModelMatch ? existingTpModelMatch[1] : null;
-    
-    // Remove ALL existing platform linking sections
-    // This pattern matches any iotPlatformDeviceModel + iotDeviceModelTag insertion pair
-    // It handles both formats: with comment headers (our format) and without (original server format)
-    const simplePlatformPattern = /(?:\/\*[^*]*\*\/\s*)?INSERT INTO dbo\.iotPlatformDeviceModel\s*\([^)]*\)\s*VALUES\s*\([^)]*@deviceModelId[^)]*\);?\s*(?:SET @iotPlatformDeviceModelId = SCOPE_IDENTITY\(\);)?\s*INSERT INTO dbo\.iotDeviceModelTag\s*\([^)]*\)\s*VALUES\s*\([^)]*'DeviceModelID'[^)]*\);?/gi;
-    
-    updatedSqlText = updatedSqlText.replace(simplePlatformPattern, '');
-    
-    // Also remove standalone "Link to IoT Platforms" comment headers and DECLARE statements that might be left over
-    updatedSqlText = updatedSqlText.replace(/\/\*\s*----\s*Link to IoT Platforms[^*]*\*\/\s*/g, '');
-    updatedSqlText = updatedSqlText.replace(/\s*DECLARE @iotPlatformDeviceModelId int;\s*(?=\n|$)/g, '');
-    
-    // Clean up any excessive blank lines (more than 2 consecutive newlines)
+
+    // Clean up excessive blank lines
     updatedSqlText = updatedSqlText.replace(/\n{3,}/g, '\n\n');
-    
-    // Insert the new platform sections before SELECT or COMMIT
-    const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/;
-    const beforeCommitPattern = /(\n\s*COMMIT TRAN;)/;
-    
+
+    // Insert the new platform sections before SELECT or COMMIT, else append
+    const beforeSelectPattern = /(\n\n+SELECT\s+DISTINCT)/i;
+    const beforeCommitPattern = /(\n\s*COMMIT TRAN;)/i;
+
     if (beforeSelectPattern.test(updatedSqlText)) {
       updatedSqlText = updatedSqlText.replace(beforeSelectPattern, `\n\n${completePlatformSection}\n$1`);
     } else if (beforeCommitPattern.test(updatedSqlText)) {
       updatedSqlText = updatedSqlText.replace(beforeCommitPattern, `\n${completePlatformSection}\n\n$1`);
     } else {
-      // Append at the end
       updatedSqlText = updatedSqlText.trim() + '\n\n' + completePlatformSection;
     }
-    
-    // Update the primary platform ID in the initial INSERT statement (use first selected platform)
+
+    // Update the primary platform ID in the initial INSERT (use first selected platform)
     const primaryPlatformId = selectedPlatformIds[0];
     updatedSqlText = updatedSqlText.replace(
       /\(.*deviceModelName.*deviceModelVersion.*deviceModelSupplier.*iotPlatformId.*decoderFunctionName.*display.*\)[\s\S]*?VALUES[\s\S]*?\(.*@name.*NULL.*@supplier.*\d+.*@decoder.*1.*\)/i,
       (match) => match.replace(/(@supplier,\s*)(\d+)/, `$1${primaryPlatformId}`)
     );
-    
-    // Preserve the existing @tpModel value if it exists
-    if (existingTpModelValue && selectedPlatformIds.includes(1)) {
-      // Only update if ThingPark is selected
-      updatedSqlText = updatedSqlText.replace(
-        /DECLARE @tpModel\s+nvarchar\(200\)\s*=\s*N'[^']*'/,
-        `DECLARE @tpModel nvarchar(200) = N'${existingTpModelValue}'`
-      );
-    }
-    
+
     setUpdatedSql(updatedSqlText);
 
-    
     const totalChanges = additionalAttributes.length;
     const platformNames = selectedPlatformIds
       .map(id => IOT_PLATFORMS.find(p => p.id === id)?.name)
       .filter(Boolean)
       .join(', ');
-    
+
     toast({
       title: "SQL uppdaterad!",
-      description: totalChanges > 0 
+      description: totalChanges > 0
         ? `${editableMappedAttributes.length} befintliga + ${totalChanges} nya attribut · Plattformar: ${platformNames}`
         : `${editableMappedAttributes.length} attribut · Plattformar: ${platformNames}`,
     });
   };
+
 
   return (
     <div className="space-y-6">
