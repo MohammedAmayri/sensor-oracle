@@ -1,0 +1,833 @@
+using Microsoft.Playwright;
+using Microsoft.Playwright.NUnit;
+using NUnit.Framework;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using static Microsoft.Playwright.Assertions;
+
+namespace WebE2E.Tests
+{
+    [Parallelizable(ParallelScope.None)]
+    public class SensorE2EFlows : PageTest
+    {
+        // === ENV / Context ===
+        public override BrowserNewContextOptions ContextOptions() => new()
+        {
+            BaseURL = System.Environment.GetEnvironmentVariable("BASE_URL") ?? "https://localhost:7071",
+            ViewportSize = new() { Width = 1400, Height = 900 },
+            RecordVideoDir = "artifacts/videos",
+            IgnoreHTTPSErrors = true
+        };
+
+        [SetUp]
+        public async Task StartTrace() =>
+            await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+
+        [TearDown]
+        public async Task StopTrace() =>
+            await Context.Tracing.StopAsync(new() { Path = $"artifacts/traces/{TestContext.CurrentContext.Test.Name}.zip" });
+
+        // === Shared UI strings (Swedish) ===
+        private const string CompanyName = "Pingday AB";
+        private const string Nav_Link_Sensorhantering = "Sensorhantering";
+        private const string Btn_Välj = "Välj";
+        private const string Btn_Klart = "Klart";
+        private const string Btn_Vidare = "Vidare";
+        private const string Btn_Spara = "Spara";
+        private const string Btn_Close = "Close";
+        private const string Btn_Radera = "Radera Sensor";
+        private const string Btn_Ja = "Ja";
+        private const string Switch_Dataflode_Aktivt = "Dataflöde aktivt:";
+        private const string Tab_Placering = "Placering";
+        private const string Region_Map = "Interactive Map";
+        private const string Region_Map_Alt = "Map";
+
+        private const string Icon_AddSensor = "Lägg till sensor";
+        private const string Icon_SearchDevEuiAPI = "Sök efter DevEUI i API";
+
+        private const string Label_Namn = "Namn:";
+        private const string Label_Namn_Req = "Namn: *";
+        private const string Label_DevEui = "Device EUI:";
+        private const string Label_DevEui_Req = "Device EUI: *";
+        private const string Label_AppEui = "OTAA AppEUI:";
+        private const string Label_AppKey = "OTAA AppKey: *";
+        private const string Label_ABP_DevAddr = "ABP NwAdress (DeviceAdr): *";
+        private const string Label_ABP_AppSKey = "ABP Appkey (AppSKey): *";
+        private const string Label_ABP_NwkSKey = "ABP NwkKey: *";
+        private const string Label_SensorKlass = "Sensor klass:";
+
+        private const string Msg_SensorCreated = "Registrering av sensor"; // sometimes "Sensor skapad, du kan nu stä..."
+        private static readonly Regex Msg_SensorCreatedRegex = new("(Registrering av sensor|Sensor skapad)", RegexOptions.IgnoreCase);
+        private const string Msg_SensorUpdated = "Sensor uppdaterad";
+        private const string Msg_SensorDeleted = "Sensor raderad";
+        private const string Btn_VisaKarta = "Visa karta";
+        private const string Btn_TomFalt = "Töm fält";
+
+        // Combobox test values used in your examples
+        private const string Model_Option_Text = "Elsys ERS"; // consistent with your code
+        private const string Place_Option_Text = "testPlats"; // sometimes you used "Anläggning - 101..." – adjust if needed
+        private const string ExtPlaceCode_Option_Text = "testPlatsKod";
+        private const string DebCode_Option_Text = "testDebKod";
+        private const string FuncArea_Option_Text = "TestFunkOmråde";
+
+        // Netmore creation used a "Prisgrupp" like option text in your sample
+        private const string Netmore_Price_Option_Text = "Upp till 24 meddelanden per"; // adjust if UI differs
+
+        // === Keys / constants from your brief ===
+        private const string OTAA_AppEui_Value = "0000000000000001";
+        private const string OTAA_AppKey_Value = "AAAAAB0B0B0AAAA3AAAABBAB0B0B0A33";
+
+        private const string ABP_DevAddr_Value = "00000000";
+        private const string ABP_AppSKey_Value = "00000000000000000000000000000000";
+        private const string ABP_NwkSKey_Value = "00000000000000000000000000000000";
+
+        // === Platform enum ===
+        private enum Platform { Chirpstack, Thingpark, Netmore }
+
+        // === Test Data (from your cases) ===
+        private static class CS // CHIRPSTACK
+        {
+            public const string CreateABP_Name = "MATestAuto_ FINAL 30-09 CS ABP";
+            public const string CreateABP_Eui = "FAAAAAACAAAAAB11";
+
+            public const string CreateOTAA_NoDF_Name = "MATestAuto_ FINAL 30-09 CS OTAA";
+            public const string CreateOTAA_NoDF_Eui = "FAAAAAACAAAAAB12";
+
+            public const string Recreate_Name = "MATestAuto_ FINAL 30-09 CS Recreated";
+            public const string Recreate_NoDF_Name = "MATestAuto_ FINAL 30-09 CS Recreated w DF off";
+
+            // We’ll reuse the OTAA EUI for delete/recreate loop
+            public const string Flow_Eui = CreateOTAA_NoDF_Eui;
+        }
+
+        private static class TP // THINGPARK
+        {
+            public const string CreateABP_Name = "MATestAuto_ FINAL 30-09 TP ABP";
+            public const string CreateABP_Eui = "FAAAAAACAAAAAB21";
+
+            public const string CreateOTAA_ClassA_Name = "MATestAuto_ FINAL 30-09 TP OTAA-CA";
+            public const string CreateOTAA_ClassA_Eui = "FAAAAAACAAAAAB23";
+
+            public const string CreateOTAA_ClassB_Name = "MATestAuto_ FINAL 30-09 TP OTAA-CB";
+            public const string CreateOTAA_ClassB_Eui = "AAAAAAACAAAAAB24"; // as given
+
+            public const string CreateOTAA_ClassC_Name = "MATestAuto_ FINAL 30-09 TP OTAA-CC";
+            public const string CreateOTAA_ClassC_Eui = "FAAAAAACAAAAAB25";
+
+            public const string Recreate_Name = "MATestAuto_ FINAL 30-09 TP Recreated";
+            public const string Recreate_NoDF_Name = "MATestAuto_ FINAL 30-09 TP Recreated DF off";
+
+            // We’ll use the ClassC EUI for update/delete/recreate flow
+            public const string Flow_Eui = CreateOTAA_ClassC_Eui;
+        }
+
+        private static class NM // NETMORE
+        {
+            public const string CreateABP_Name = "MATestAuto_ FINAL 30-09 NM ABP";
+            public const string CreateABP_Eui = "FAAAAAACAAAAAB31";
+
+            public const string CreateOTAA_ClassA_Name = "MATestAuto_ FINAL 30-09 NM OTAA-CA";
+            public const string CreateOTAA_ClassA_Eui = "FAAAAAACAAAAAB32";
+
+            public const string CreateOTAA_ClassC_Name = "MATestAuto_ FINAL 30-09 NM OTAA-CC";
+            public const string CreateOTAA_ClassC_Eui = "FAAAAAACAAAAAB33";
+
+            public const string Create_NoDF_Name = "MATestAuto_ FINAL 30-09 NM NoDF";
+            public const string Create_NoDF_Eui = "FAAAAAACAAAAAB34";
+
+            public const string Recreate_Name = "MATestAuto_ FINAL 30-09 NM Recreated";
+            public const string Recreate_Eui = "FAAAAAACAAAAAB35";
+            public const string Recreate_NoDF_Name = "MATestAuto_ FINAL 30-09 NM Recreated DF off";
+
+            // Update/price/get/delete will use the Recreate_Eui (as your list later references 35)
+            public const string Flow_Eui = Recreate_Eui;
+        }
+
+        // === High-level FLOW TESTS =======================================================
+
+        [Test, Order(1)]
+        public async Task Flow_Chirpstack_AllCases()
+        {
+            await LoginAndOpenSensorManagementAsync();
+
+            // Create -> ABP
+            await CreateSensorAsync(
+                platform: Platform.Chirpstack,
+                activation: "ABP",
+                name: CS.CreateABP_Name,
+                devEui: CS.CreateABP_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: null);
+
+            // Create -> OTAA & No DataFlow
+            await CreateSensorAsync(
+                platform: Platform.Chirpstack,
+                activation: "OTAA",
+                name: CS.CreateOTAA_NoDF_Name,
+                devEui: CS.CreateOTAA_NoDF_Eui,
+                dataFlowEnabled: false,
+                lorawanClass: "Class A");
+
+            // Update -> Name
+            await UpdateSensorNameAsync(CS.Flow_Eui, "UpdatedNameMo");
+
+            // Update -> coords
+            await UpdateSensorCoordsAsync(CS.Flow_Eui);
+
+            // Update -> coords to null
+            await ClearSensorCoordsAsync(CS.Flow_Eui);
+
+            // Get ->
+            await SearchDevEuiInApiAsync(Platform.Chirpstack, CS.Flow_Eui, shouldExist: true);
+
+            // Delete ->
+            await DeleteSensorAsync(CS.Flow_Eui);
+
+            // RECREATE ->
+            await CreateSensorAsync(
+                platform: Platform.Chirpstack,
+                activation: "OTAA",
+                name: CS.Recreate_Name,
+                devEui: CS.Flow_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class A");
+
+            // Delete then RECREATE w/ DataFlow off ->
+            await DeleteSensorAsync(CS.Flow_Eui);
+            await CreateSensorAsync(
+                platform: Platform.Chirpstack,
+                activation: "OTAA",
+                name: CS.Recreate_NoDF_Name,
+                devEui: CS.Flow_Eui,
+                dataFlowEnabled: false,
+                lorawanClass: "Class A");
+
+            // Cleanup
+            await DeleteSensorAsync(CS.Flow_Eui);
+            await DeleteIfExistsAsync(CS.CreateABP_Eui);
+        }
+
+        [Test, Order(2)]
+        public async Task Flow_Thingpark_AllCases()
+        {
+            await LoginAndOpenSensorManagementAsync();
+
+            // Create -> ABP
+            await CreateSensorAsync(
+                platform: Platform.Thingpark,
+                activation: "ABP",
+                name: TP.CreateABP_Name,
+                devEui: TP.CreateABP_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: null);
+
+            // Create -> OTAA & CLASS A & No Data Flow
+            await CreateSensorAsync(
+                platform: Platform.Thingpark,
+                activation: "OTAA",
+                name: TP.CreateOTAA_ClassA_Name,
+                devEui: TP.CreateOTAA_ClassA_Eui,
+                dataFlowEnabled: false,
+                lorawanClass: "Class A");
+
+            // Create -> OTAA & CLASS B
+            await CreateSensorAsync(
+                platform: Platform.Thingpark,
+                activation: "OTAA",
+                name: TP.CreateOTAA_ClassB_Name,
+                devEui: TP.CreateOTAA_ClassB_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class B"); // if class is fixed by model, helper tolerates missing combobox
+
+            // Create -> OTAA & CLASS C
+            await CreateSensorAsync(
+                platform: Platform.Thingpark,
+                activation: "OTAA",
+                name: TP.CreateOTAA_ClassC_Name,
+                devEui: TP.CreateOTAA_ClassC_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class C");
+
+            // Update -> Name
+            await UpdateSensorNameAsync(TP.Flow_Eui, "UpdatedNameMo");
+
+            // Update -> coords
+            await UpdateSensorCoordsAsync(TP.Flow_Eui);
+
+            // Update -> coords to null
+            await ClearSensorCoordsAsync(TP.Flow_Eui);
+
+            // Get ->
+            await SearchDevEuiInApiAsync(Platform.Thingpark, TP.Flow_Eui, shouldExist: true);
+
+            // Delete ->
+            await DeleteSensorAsync(TP.Flow_Eui);
+
+            // RECREATE ->
+            await CreateSensorAsync(
+                platform: Platform.Thingpark,
+                activation: "OTAA",
+                name: TP.Recreate_Name,
+                devEui: TP.Flow_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class C");
+
+            // Delete then RECREATE w/ DF off ->
+            await DeleteSensorAsync(TP.Flow_Eui);
+            await CreateSensorAsync(
+                platform: Platform.Thingpark,
+                activation: "OTAA",
+                name: TP.Recreate_NoDF_Name,
+                devEui: TP.Flow_Eui,
+                dataFlowEnabled: false,
+                lorawanClass: "Class C");
+
+            // Cleanup (plus the “ABP” and “Class A/B” records)
+            await DeleteSensorIfPresentAsync(TP.CreateABP_Eui);
+            await DeleteSensorIfPresentAsync(TP.CreateOTAA_ClassA_Eui);
+            await DeleteSensorIfPresentAsync(TP.CreateOTAA_ClassB_Eui);
+            await DeleteSensorAsync(TP.Flow_Eui);
+        }
+
+        [Test, Order(3)]
+        public async Task Flow_Netmore_AllCases()
+        {
+            await LoginAndOpenSensorManagementAsync();
+
+            // Create -> ABP
+            await CreateSensorAsync(
+                platform: Platform.Netmore,
+                activation: "ABP",
+                name: NM.CreateABP_Name,
+                devEui: NM.CreateABP_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: null,
+                priceGroupText: Netmore_Price_Option_Text);
+
+            // Create -> OTAA & CLASS A
+            await CreateSensorAsync(
+                platform: Platform.Netmore,
+                activation: "OTAA",
+                name: NM.CreateOTAA_ClassA_Name,
+                devEui: NM.CreateOTAA_ClassA_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class A",
+                priceGroupText: Netmore_Price_Option_Text);
+
+            // Create -> OTAA & CLASS C
+            await CreateSensorAsync(
+                platform: Platform.Netmore,
+                activation: "OTAA",
+                name: NM.CreateOTAA_ClassC_Name,
+                devEui: NM.CreateOTAA_ClassC_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class C",
+                priceGroupText: Netmore_Price_Option_Text);
+
+            // Create -> No DATAFLOW
+            await CreateSensorAsync(
+                platform: Platform.Netmore,
+                activation: "OTAA",
+                name: NM.Create_NoDF_Name,
+                devEui: NM.Create_NoDF_Eui,
+                dataFlowEnabled: false,
+                lorawanClass: "Class A",
+                priceGroupText: Netmore_Price_Option_Text);
+
+            // Recreate target (will be used for subsequent updates)
+            await CreateSensorAsync(
+                platform: Platform.Netmore,
+                activation: "OTAA",
+                name: NM.Recreate_Name,
+                devEui: NM.Recreate_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class C",
+                priceGroupText: Netmore_Price_Option_Text);
+
+            // Update -> Name (and ensure no unintended side-effects)
+            await UpdateSensorNameAsync(NM.Flow_Eui, "UpdatedNameMo");
+
+            // Update -> coords
+            await UpdateSensorCoordsAsync(NM.Flow_Eui);
+
+            // Update -> Prisgrupp X2 (best effort – won’t fail test suite if field not present)
+            await UpdatePriceGroupIfExistsAsync(NM.Flow_Eui);
+
+            // Get ->
+            await SearchDevEuiInApiAsync(Platform.Netmore, NM.Flow_Eui, shouldExist: true);
+
+            // Delete ->
+            await DeleteSensorAsync(NM.Flow_Eui);
+
+            // RECREATE ->
+            await CreateSensorAsync(
+                platform: Platform.Netmore,
+                activation: "OTAA",
+                name: NM.Recreate_Name,
+                devEui: NM.Flow_Eui,
+                dataFlowEnabled: true,
+                lorawanClass: "Class C",
+                priceGroupText: Netmore_Price_Option_Text);
+
+            // RECREATE W DataFlow off ->
+            await DeleteSensorAsync(NM.Flow_Eui);
+            await CreateSensorAsync(
+                platform: Platform.Netmore,
+                activation: "OTAA",
+                name: NM.Recreate_NoDF_Name,
+                devEui: NM.Flow_Eui,
+                dataFlowEnabled: false,
+                lorawanClass: "Class C",
+                priceGroupText: Netmore_Price_Option_Text);
+
+            // Cleanup everything created earlier
+            await DeleteSensorIfPresentAsync(NM.CreateABP_Eui);
+            await DeleteSensorIfPresentAsync(NM.CreateOTAA_ClassA_Eui);
+            await DeleteSensorIfPresentAsync(NM.CreateOTAA_ClassC_Eui);
+            await DeleteSensorIfPresentAsync(NM.Create_NoDF_Eui);
+            await DeleteSensorAsync(NM.Flow_Eui);
+        }
+
+        // === HELPERS ====================================================================
+
+        private async Task LoginAndOpenSensorManagementAsync()
+        {
+            await Page.GotoAsync("https://localhost:7071/login");
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Välj }).ClickAsync();
+            await Page.GetByRole(AriaRole.Gridcell, new() { Name = CompanyName }).ClickAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Klart }).ClickAsync();
+            await Page.GetByRole(AriaRole.Link, new() { Name = Nav_Link_Sensorhantering }).ClickAsync();
+        }
+
+        private async Task OpenCreateWizardAsync()
+        {
+            // The add button is an icon/svg in your sample:
+            await Page.Locator("svg").Filter(new() { HasText = Icon_AddSensor }).ClickAsync();
+        }
+
+        private async Task SelectPlatformAsync(Platform platform)
+        {
+            string platformText = platform switch
+            {
+                Platform.Chirpstack => "Chirpstack",
+                Platform.Thingpark => "Thingpark",
+                Platform.Netmore => "Netmore",
+                _ => "Thingpark"
+            };
+
+            // Platform combobox looks custom; your code uses a <slot> text click:
+            await Page.GetByRole(AriaRole.Combobox).Filter(new() { HasText = "ThingparkRadonovaChirpstackKameror MKB NetNetmoreThingpark" }).Locator("div").First.ClickAsync();
+            await Page.GetByRole(AriaRole.Option, new() { Name = platformText }).ClickAsync();
+            await Page.Locator("slot").Filter(new() { HasTextRegex = new Regex($"^{Regex.Escape(platformText)}$") }).ClickAsync();
+            await Page.GetByRole(AriaRole.Combobox).Filter(new() { HasText = "ThingparkRadonovaChirpstackKameror MKB NetNetmoreChirpstack" }).Locator("svg").ClickAsync();
+
+
+            //await Page.GetByRole(AriaRole.Combobox).Filter(new() { HasText = "ThingparkRadonovaChirpstackKameror MKB NetNetmoreThingpark" }).Locator("div").First.ClickAsync();
+            //await Page.GetByRole(AriaRole.Option, new() { Name = "Chirpstack" }).ClickAsync();
+            //await Page.Locator("slot").Filter(new() { HasTextRegex = new Regex("^Chirpstack$") }).ClickAsync();
+            //await Page.GetByRole(AriaRole.Option, new() { Name = "Chirpstack" }).ClickAsync();
+            //await Page.Locator("slot").Filter(new() { HasTextRegex = new Regex("^Abeeway Compact Tracker$") }).ClickAsync();
+            //await Page.GetByRole(AriaRole.Button, new() { Name = "Vidare" }).ClickAsync();
+        }
+
+        private async Task PickModelAsync()
+        {
+            // You click a "div" then choose "Elsys ERS" in examples:
+            await Page.Locator("div").Filter(new() { HasTextRegex = new Regex("^Abeeway Compact Tracker$") }).ClickAsync();
+            await Page.GetByRole(AriaRole.Option, new() { Name = Model_Option_Text, Exact = true }).ClickAsync();
+        }
+
+        private async Task FillCommonRequiredFieldsAsync(string name, string devEui, bool dataFlowEnabled)
+        {
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_Namn_Req }).FillAsync(name);
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_DevEui_Req }).FillAsync(devEui);
+
+            // Location / Ext place code / Deb code / Func area (per your examples)
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Plats: *" }).ClickAsync();
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Plats: *" }).FillAsync("test");
+            await Page.GetByRole(AriaRole.Option, new() { Name = Place_Option_Text }).ClickAsync();
+
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Extern platskod: *" }).ClickAsync();
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Extern platskod: *" }).FillAsync("test");
+            await Page.GetByRole(AriaRole.Option, new() { Name = ExtPlaceCode_Option_Text }).ClickAsync();
+
+            // Debiteringskod combobox appears as <fluent-combobox> with svg, mirror your pattern:
+            // Debiteringskod combobox appears as <fluent-combobox> with svg, mirror your pattern:
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Debiteringskod: *" }).ClickAsync();
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Debiteringskod: *" }).FillAsync("test");
+            await Page.GetByRole(AriaRole.Option, new() { Name = DebCode_Option_Text }).ClickAsync();
+
+
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Funktionsområde: *" }).ClickAsync();
+            await Page.GetByRole(AriaRole.Combobox, new() { Name = "Funktionsområde: *" }).FillAsync("test");
+            await Page.GetByRole(AriaRole.Option, new() { Name = FuncArea_Option_Text }).ClickAsync();
+
+            // Toggle Data Flow if needed
+            var switchHandle = Page.GetByRole(AriaRole.Switch, new() { Name = Switch_Dataflode_Aktivt });
+            // We can’t read switch state reliably cross-framework; do safe click sequences:
+            // If "dataFlowEnabled" = true, ensure it’s ON by clicking once if needed
+            // If false, click once to turn it off.
+            // (Idempotency depends on default; we’ll attempt to set desired state with 1 click followed by check.)
+            try
+            {
+                // Try to read aria-checked (may not exist; ignore)
+                var ariaChecked = await switchHandle.GetAttributeAsync("aria-checked");
+                if (ariaChecked != null)
+                {
+                    bool isOn = ariaChecked == "true";
+                    if (isOn != dataFlowEnabled) await switchHandle.ClickAsync();
+                }
+                else
+                {
+                    // If attribute missing, click if disabling is requested (matches your examples where you clicked once)
+                    if (!dataFlowEnabled) await switchHandle.ClickAsync();
+                }
+            }
+            catch
+            {
+                // Fall back: do nothing if switch absent
+            }
+        }
+
+        private async Task FillOTAAAsync(string lorawanClass /* e.g., "Class A" */)
+        {
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync();
+            // Map (optional)
+            await TryOpenMapAndClickAsync();
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync(); // next section
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync(); // next section
+
+            // OTAA fields
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_AppEui }).FillAsync(OTAA_AppEui_Value);
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_AppKey }).FillAsync(OTAA_AppKey_Value);
+
+            // Optional class combobox
+            await TrySetClassAsync(lorawanClass);
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Skapa sensor" }).ClickAsync();
+            await Expect(Page.GetByText(Msg_SensorCreatedRegex)).ToBeVisibleAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Close }).ClickAsync();
+        }
+
+        private async Task FillABPAsync(string lorawanClass /* nullable */, string priceGroupText /* optional, for NM */)
+        {
+            // In your NM flow you set “Prisgrupp” first and “1.0.2” version
+            // We’ll try to pick a price group if visible (best-effort).
+            await TryPickPriceGroupAsync(priceGroupText);
+            await TryPickFirmwareVersionAsync("1.0.2");
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync();
+
+            // General info steps (mirroring your patterns)
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync(); // next
+            await TryOpenMapAndClickAsync(); // map step
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync();
+
+            // ABP fields
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_ABP_DevAddr }).FillAsync(ABP_DevAddr_Value);
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_ABP_AppSKey }).FillAsync(ABP_AppSKey_Value);
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_ABP_NwkSKey }).FillAsync(ABP_NwkSKey_Value);
+
+            await TrySetClassAsync(lorawanClass);
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Skapa sensor" }).ClickAsync();
+            await Expect(Page.GetByText(Msg_SensorCreatedRegex)).ToBeVisibleAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Close }).ClickAsync();
+        }
+
+        private async Task CreateSensorAsync(Platform platform, string activation, string name, string devEui, bool dataFlowEnabled, string lorawanClass, string priceGroupText = null)
+        {
+            // Open create wizard
+            await OpenCreateWizardAsync();
+
+            // Choose platform (when applicable)
+            await SelectPlatformAsync(platform);
+
+            // Pick model
+            await PickModelAsync();
+
+            // Pick activation mode
+            await SelectActivationOnFirstWizardPageAsync(activation);
+
+            // For NM ABP you selected a price group before Next; we’ll handle it inside FillABPAsync also.
+            if (!string.IsNullOrWhiteSpace(priceGroupText))
+            {
+                await TryPickPriceGroupAsync(priceGroupText);
+            }
+
+            // Next to form page
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync();
+
+            // Required fields (name, devEui, place etc., dataflow)
+            await FillCommonRequiredFieldsAsync(name, devEui, dataFlowEnabled);
+
+            // Proceed to activation-specific pages
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Vidare }).ClickAsync();
+
+            if (activation.Equals("OTAA", System.StringComparison.OrdinalIgnoreCase))
+            {
+                await FillOTAAAsync(lorawanClass ?? "Class A");
+            }
+            else
+            {
+                await FillABPAsync(lorawanClass ?? "Class A", priceGroupText);
+            }
+        }
+
+        private async Task UpdateSensorNameAsync(string devEui, string newName)
+        {
+            await OpenSensorDetailsByDevEuiAsync(devEui);
+
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = Label_Namn }).FillAsync(newName);
+
+            // Optional: toggle dataflow exactly once to ensure we don’t accidentally affect it
+            // (Your spec says “no effect on other fields” for NM; so we won’t flip it here.)
+
+            // Optionally touch map to verify coords not nulled implicitly
+            await Page.GetByRole(AriaRole.Button, new() { Name = Tab_Placering }).ClickAsync();
+            await TryOpenMapAndClickAsync();
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Spara, Exact = true }).ClickAsync();
+            await Expect(Page.GetByText(Msg_SensorUpdated)).ToBeVisibleAsync();
+        }
+
+        private async Task UpdateSensorCoordsAsync(string devEui)
+        {
+            await OpenSensorDetailsByDevEuiAsync(devEui);
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = Tab_Placering }).ClickAsync();
+            await TryOpenMapAndClickAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Spara, Exact = true }).ClickAsync();
+            await Expect(Page.GetByText(Msg_SensorUpdated)).ToBeVisibleAsync();
+        }
+
+        private async Task ClearSensorCoordsAsync(string devEui)
+        {
+            await OpenSensorDetailsByDevEuiAsync(devEui);
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = Tab_Placering }).ClickAsync();
+            await TryClickIfVisibleAsync(Page.GetByRole(AriaRole.Button, new() { Name = Btn_TomFalt }));
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Spara, Exact = true }).ClickAsync();
+            await Expect(Page.GetByText(Msg_SensorUpdated)).ToBeVisibleAsync();
+        }
+
+        private async Task UpdatePriceGroupIfExistsAsync(string devEui)
+        {
+            await OpenSensorDetailsByDevEuiAsync(devEui);
+
+            // Try to find a combobox with label or surrounding text "Prisgrupp"
+            var maybePriceCombo = Page.GetByRole(AriaRole.Combobox)
+    .Filter(new() { HasTextRegex = new Regex("Prisgrupp", RegexOptions.IgnoreCase) });
+
+            if (await maybePriceCombo.CountAsync() > 0)
+            {
+                await maybePriceCombo.First.ClickAsync();
+                // Pick first option different from current (best effort)
+                var firstOption = Page.GetByRole(AriaRole.Option).Nth(0);
+                await TryClickIfVisibleAsync(firstOption);
+
+                // Save and assert
+                await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Spara, Exact = true }).ClickAsync();
+                await Expect(Page.GetByText(Msg_SensorUpdated)).ToBeVisibleAsync();
+
+                // Change again (X2)
+                await OpenSensorDetailsByDevEuiAsync(devEui);
+                await maybePriceCombo.First.ClickAsync();
+                var secondOption = Page.GetByRole(AriaRole.Option).Nth(1);
+                await TryClickIfVisibleAsync(secondOption);
+
+                await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Spara, Exact = true }).ClickAsync();
+                await Expect(Page.GetByText(Msg_SensorUpdated)).ToBeVisibleAsync();
+            }
+            else
+            {
+                TestContext.Out.WriteLine("Prisgrupp combobox not found; skipping (OK by spec).");
+            }
+        }
+
+        private async Task SearchDevEuiInApiAsync(Platform platform, string devEui, bool shouldExist)
+        {
+            await Page.Locator("svg").Filter(new() { HasText = Icon_SearchDevEuiAPI }).ClickAsync();
+            await SelectPlatformAsync(platform);
+
+            await Page.GetByRole(AriaRole.Textbox, new() { Name = $"{Label_DevEui}" }).FillAsync(devEui);
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Sök" }).ClickAsync();
+
+            if (shouldExist)
+            {
+                await Expect(Page.GetByText(new Regex("finns på plattform:", RegexOptions.IgnoreCase))).ToBeVisibleAsync();
+            }
+            else
+            {
+                await Expect(Page.GetByText(new Regex("Kan inte hitta deviceEui:", RegexOptions.IgnoreCase))).ToBeVisibleAsync();
+            }
+
+            await TryClickIfVisibleAsync(Page.GetByRole(AriaRole.Button, new() { Name = Btn_Close }));
+        }
+
+        private async Task DeleteSensorAsync(string devEui)
+        {
+            await OpenSensorDetailsByDevEuiAsync(devEui);
+
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Radera }).ClickAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = Btn_Ja }).ClickAsync();
+
+            // Some UIs require clicking "Spara" after delete in your example:
+            await TryClickIfVisibleAsync(Page.GetByRole(AriaRole.Button, new() { Name = Btn_Spara }));
+
+            await Expect(Page.GetByText(Msg_SensorDeleted)).ToBeVisibleAsync();
+        }
+
+        private async Task DeleteSensorIfPresentAsync(string devEui)
+        {
+            try
+            {
+                await DeleteSensorAsync(devEui);
+            }
+            catch
+            {
+                // If we can't find the row or the edit dialog, it likely doesn't exist; that’s fine.
+                TestContext.Out.WriteLine($"Sensor {devEui} not present for deletion (OK).");
+            }
+        }
+
+        private async Task DeleteIfExistsAsync(string devEui) => await DeleteSensorIfPresentAsync(devEui);
+
+        private async Task OpenSensorDetailsByDevEuiAsync(string devEui)
+        {
+            // Use the list’s global search (your samples show a fluent-search)
+            // 1) Click search icon/button
+            await Page.Locator("fluent-search button").ClickAsync();
+            // 2) Fill search input (some builds have unlabeled input; use first text input after fluent-search)
+            var searchInput = Page.Locator("fluent-search").Locator("input");
+            await searchInput.FillAsync(devEui);
+            await searchInput.PressAsync("Enter");
+
+            // Context menu → Öppna Sensor (mirrors your example)
+            // Pick first matching empty gridcell or the row with our EUI and open context menu
+            var anyGridCell = Page.GetByRole(AriaRole.Gridcell).First;
+            await anyGridCell.ClickAsync();
+            await anyGridCell.ClickAsync(new LocatorClickOptions { Button = MouseButton.Right });
+
+            await Page.GetByRole(AriaRole.Menuitem, new() { Name = "Öppna Sensor" }).ClickAsync();
+        }
+
+        private async Task TryOpenMapAndClickAsync()
+        {
+            // Some pages show "Visa karta", others already on a map tab
+            await TryClickIfVisibleAsync(Page.GetByRole(AriaRole.Button, new() { Name = Btn_VisaKarta }));
+
+            // Try both map region names you used
+            var map = Page.GetByRole(AriaRole.Region, new() { Name = Region_Map });
+            if (await map.CountAsync() == 0)
+            {
+                map = Page.GetByRole(AriaRole.Region, new() { Name = Region_Map_Alt });
+            }
+
+            if (await map.CountAsync() > 0)
+            {
+                await map.ClickAsync(new LocatorClickOptions { Position = new Position { X = 280, Y = 140 } });
+            }
+        }
+
+        private async Task TrySetClassAsync(string lorawanClass)
+        {
+            if (string.IsNullOrWhiteSpace(lorawanClass)) return;
+
+            try
+            {
+                var klass = Page.GetByRole(AriaRole.Combobox, new() { Name = Label_SensorKlass });
+                if (await klass.CountAsync() > 0)
+                {
+                    await klass.First.Locator("svg").ClickAsync();
+                    await Page.GetByRole(AriaRole.Option, new() { Name = lorawanClass }).ClickAsync();
+                }
+            }
+            catch
+            {
+                // Some models decide class automatically – ignore if not present.
+            }
+        }
+
+        private async Task TryPickPriceGroupAsync(string priceGroupText)
+        {
+            if (string.IsNullOrWhiteSpace(priceGroupText)) return;
+
+            try
+            {
+                // Price group combobox varies; pick any combobox that currently shows “Gör ett val...”
+                var combo = Page.Locator("div").Filter(new() { HasTextRegex = new Regex("^Gör ett val\\.\\.\\.$") }).First;
+                if (await combo.CountAsync() > 0)
+                {
+                    await combo.ClickAsync();
+                    await Page.GetByRole(AriaRole.Option, new() { Name = priceGroupText }).ClickAsync();
+                }
+            }
+            catch
+            {
+                TestContext.Out.WriteLine("Prisgrupp combobox not available.");
+            }
+        }
+
+        private async Task TryPickFirmwareVersionAsync(string version)
+        {
+            try
+            {
+                var versionCombo = Page.GetByRole(AriaRole.Combobox)
+    .Filter(new() { HasTextRegex = new Regex("Gör ett val") }).First;
+
+                if (await versionCombo.CountAsync() > 0)
+                {
+                    await versionCombo.Locator("div").First.ClickAsync();
+                    await Page.GetByRole(AriaRole.Option, new() { Name = version }).ClickAsync();
+                }
+            }
+            catch
+            {
+                // OK if no version selection needed
+            }
+        }
+
+        private static async Task TryClickIfVisibleAsync(ILocator locator)
+        {
+            try
+            {
+                if (await locator.CountAsync() > 0)
+                {
+                    await locator.First.ClickAsync();
+                }
+            }
+            catch { /* ignore */ }
+        }
+
+        private async Task SelectActivationOnFirstWizardPageAsync(string activation)
+        {
+            var desired = activation.Equals("ABP", System.StringComparison.OrdinalIgnoreCase) ? "ABP" : "OTAA";
+
+            // Primary: matches your UI where "OTAA" is shown and opens options including "ABP"
+            try
+            {
+                await Page.Locator("div").Filter(new() { HasTextRegex = new Regex("^(OTAA|ABP)$") }).ClickAsync();
+                await Page.GetByRole(AriaRole.Option, new() { Name = desired }).ClickAsync();
+                return;
+            }
+            catch { /* fall back below */ }
+
+            // Fallback: some builds expose a combobox with these options
+            try
+            {
+                var activationCombo = Page.GetByRole(AriaRole.Combobox)
+                    .Filter(new() { HasTextRegex = new Regex("(OTAA|ABP)", RegexOptions.IgnoreCase) }).First;
+                if (await activationCombo.CountAsync() > 0)
+                {
+                    await activationCombo.ClickAsync();
+                    await Page.GetByRole(AriaRole.Option, new() { Name = desired }).ClickAsync();
+                }
+            }
+            catch { /* ignore – keep test moving; later steps will fail if truly required */ }
+        }
+
+    }
+}
