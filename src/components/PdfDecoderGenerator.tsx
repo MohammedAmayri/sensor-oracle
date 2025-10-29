@@ -209,11 +209,14 @@ export const PdfDecoderGenerator = () => {
       
       if (!job) return;
 
-      if (job.status === "Extracted") {
+      // Check if evidence URLs are available (extraction complete)
+      const hasEvidence = job.evidenceReadUrl || job.evidenceMdUrl || job.evidenceTxtUrl;
+      
+      if (hasEvidence) {
         stopPolling();
         setState({ step: "extracted", jobId });
         loadEvidence(job);
-      } else if (job.status === "Failed") {
+      } else if (job.status === "Failed" || job.error) {
         stopPolling();
         setState({ step: "failed", jobId, error: job.error || "Extraction failed" });
         toast({
@@ -416,14 +419,17 @@ export const PdfDecoderGenerator = () => {
       
       if (!job) return;
 
-      if (job.status === "Done") {
+      // Check if artifact URLs are available (generation complete)
+      const hasArtifacts = job.resultJsonUrl || job.fullDecoderUrl || job.consoleDecoderUrl;
+      
+      if (hasArtifacts) {
         stopPolling();
         setState({ step: "done", jobId });
         toast({
           title: "Generation complete",
           description: "Your decoder artifacts are ready for download",
         });
-      } else if (job.status === "Failed") {
+      } else if (job.status === "Failed" || job.error) {
         stopPolling();
         setState({ step: "failed", jobId, error: job.error || "Generation failed" });
         toast({
