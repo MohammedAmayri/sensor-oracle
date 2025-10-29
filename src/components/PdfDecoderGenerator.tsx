@@ -77,7 +77,28 @@ export const PdfDecoderGenerator = () => {
   const [evidenceContent, setEvidenceContent] = useState("");
   const [originalEvidence, setOriginalEvidence] = useState("");
   const [outputType, setOutputType] = useState("csharp");
-  const [generalPrompt, setGeneralPrompt] = useState("Keep code idiomatic .NET 8. Minimal allocations.");
+  const [generalPrompt, setGeneralPrompt] = useState(`You are given EVIDENCE extracted from a sensor payload PDF. Produce a SINGLE JSON object with keys:
+payloadExample, consoleDecoder, fullDecoder, metadata, decodedExample, validation.
+No prose, no code fences.
+
+Rules:
+- LANGUAGE: C# ONLY.
+- fullDecoder signature: public static async Task<JObject> Decode(JObject deviceData, ILogger log)
+  and include: using Newtonsoft.Json.Linq; using Microsoft.Extensions.Logging;
+- Parse bytes with a TLV loop: read [channel][type] then Data; obey the PDF's endianness
+  (default little-endian for multi-byte if unspecified). If the PDF clearly shows port-based
+  (FPort) or non-TLV formats, adapt accordingly and state this in metadata.notes.
+- Map ONLY what's documented. Prefer standard names when evident: BatteryLevel (%),
+  Temperature (°C), Humidity (%), CO2 (ppm). Do not invent fields.
+- metadata.spec.frames must mirror the spec: "channel"/"type" as hex strings (e.g. "0x03","0x67"),
+  "len" in bytes, "endian", "scale" (e.g. "x0.1" or "/2"), "name", "unit"; include "ports" if stated.
+- Provide a robust HexToBytes helper (tolerate whitespace/odd lengths), bounds-check reads,
+  skip unknown frames safely, never throw.
+- payloadExample must be a short, valid hex that your decoder can parse; decodedExample must be
+  exactly what your decoder computes on payloadExample.
+- Ban: string token switching on textual tokens; any JavaScript keywords (let/const/function).
+- If evidence is ambiguous/insufficient, set validation.hasDecode=false and list reasons; still
+  return the full JSON object.`);
   const [specialPrompt, setSpecialPrompt] = useState("");
   const [jobData, setJobData] = useState<JobResponse | null>(null);
   const [isGeneralPromptOpen, setIsGeneralPromptOpen] = useState(false);
