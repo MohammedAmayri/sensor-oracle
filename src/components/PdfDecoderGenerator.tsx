@@ -189,16 +189,16 @@ export const PdfDecoderGenerator = () => {
     setPollCount(0);
     pollStartTimeRef.current = Date.now();
 
-    const TIMEOUT_MS = 120000; // 2 minutes max
+    const TIMEOUT_MS = 300000; // 5 minutes max (increased for large PDFs)
 
     const poll = async () => {
       // Check timeout
       if (pollStartTimeRef.current && Date.now() - pollStartTimeRef.current > TIMEOUT_MS) {
         stopPolling();
-        setState({ step: "failed", jobId, error: "Extraction timed out after 2 minutes" });
+        setState({ step: "failed", jobId, error: "Extraction timed out after 5 minutes" });
         toast({
           title: "Extraction timeout",
-          description: "The extraction is taking longer than expected. Please try again or check Azure Portal.",
+          description: "The extraction is taking longer than expected. Please check your Azure Document Intelligence service or try a simpler PDF.",
           variant: "destructive",
         });
         return;
@@ -576,10 +576,10 @@ export const PdfDecoderGenerator = () => {
               <Loader2 className="w-12 h-12 animate-spin text-primary" />
               <div className="text-center space-y-2">
                 <h3 className="text-lg font-semibold">Extracting with Azure Document Intelligence...</h3>
-                <p className="text-sm text-muted-foreground">This may take 10-20 seconds</p>
+                <p className="text-sm text-muted-foreground">This may take 10-20 seconds (complex PDFs can take longer)</p>
                 {pollCount > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Checked {pollCount} time{pollCount !== 1 ? 's' : ''} • Will timeout after 2 minutes
+                    Checked {pollCount} time{pollCount !== 1 ? 's' : ''} • Will timeout after 5 minutes
                   </p>
                 )}
               </div>
