@@ -37,6 +37,40 @@ interface JobResponse {
 const FUNC_BASE = import.meta.env.VITE_FUNC_BASE || "";
 const FUNC_KEY = import.meta.env.VITE_FUNC_KEY || "";
 
+// Map numeric status codes from backend to string values
+const mapStatusCode = (statusCode: number | string): JobStatus => {
+  if (typeof statusCode === "string") return statusCode as JobStatus;
+  
+  const statusMap: Record<number, JobStatus> = {
+    0: "Uploaded",
+    1: "Uploaded",
+    2: "Extracting",
+    3: "Extracted",
+    4: "Generating",
+    5: "Done",
+    6: "Failed",
+  };
+  
+  return statusMap[statusCode] || "Failed";
+};
+
+// Normalize backend response to match frontend interface
+const normalizeJobResponse = (data: any): JobResponse => {
+  return {
+    ok: data.ok ?? true,
+    id: data.Id || data.id || "",
+    status: mapStatusCode(data.Status ?? data.status),
+    error: data.Error ?? data.error ?? null,
+    evidenceReadUrl: data.evidenceReadUrl ?? null,
+    evidenceWriteUrl: data.evidenceWriteUrl ?? null,
+    evidenceMdUrl: data.evidenceMdUrl ?? null,
+    evidenceTxtUrl: data.evidenceTxtUrl ?? null,
+    resultJsonUrl: data.resultJsonUrl ?? null,
+    fullDecoderUrl: data.fullDecoderUrl ?? null,
+    consoleDecoderUrl: data.consoleDecoderUrl ?? null,
+  };
+};
+
 export const PdfDecoderGenerator = () => {
   const [state, setState] = useState<WorkflowState>({ step: "idle" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -93,7 +127,8 @@ export const PdfDecoderGenerator = () => {
         throw new Error(`Upload failed: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const rawData = await response.json();
+      const data = normalizeJobResponse(rawData);
       
       if (!data.ok || !data.id) {
         throw new Error("Invalid response from server");
@@ -128,9 +163,10 @@ export const PdfDecoderGenerator = () => {
         throw new Error(`Failed to get job: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      setJobData(data);
-      return data;
+      const rawData = await response.json();
+      const normalizedData = normalizeJobResponse(rawData);
+      setJobData(normalizedData);
+      return normalizedData;
     } catch (error) {
       console.error("Error fetching job:", error);
       return null;
