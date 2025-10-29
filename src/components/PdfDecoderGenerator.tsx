@@ -82,7 +82,9 @@ export const PdfDecoderGenerator = () => {
   const [jobData, setJobData] = useState<JobResponse | null>(null);
   const [isGeneralPromptOpen, setIsGeneralPromptOpen] = useState(false);
   const [isSpecialPromptOpen, setIsSpecialPromptOpen] = useState(false);
+  const [pollCount, setPollCount] = useState(0);
   const pollingIntervalRef = useRef<number | null>(null);
+  const pollStartTimeRef = useRef<number | null>(null);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -173,28 +175,46 @@ export const PdfDecoderGenerator = () => {
     }
   };
 
-  const startPollingForExtraction = (jobId: string) => {
+  const stopPolling = () => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
+    pollStartTimeRef.current = null;
+    setPollCount(0);
+  };
+
+  const startPollingForExtraction = (jobId: string) => {
+    stopPolling();
+    setPollCount(0);
+    pollStartTimeRef.current = Date.now();
+
+    const TIMEOUT_MS = 120000; // 2 minutes max
 
     const poll = async () => {
+      // Check timeout
+      if (pollStartTimeRef.current && Date.now() - pollStartTimeRef.current > TIMEOUT_MS) {
+        stopPolling();
+        setState({ step: "failed", jobId, error: "Extraction timed out after 2 minutes" });
+        toast({
+          title: "Extraction timeout",
+          description: "The extraction is taking longer than expected. Please try again or check Azure Portal.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPollCount(prev => prev + 1);
       const job = await getJob(jobId);
       
       if (!job) return;
 
       if (job.status === "Extracted") {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
+        stopPolling();
         setState({ step: "extracted", jobId });
         loadEvidence(job);
       } else if (job.status === "Failed") {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
+        stopPolling();
         setState({ step: "failed", jobId, error: job.error || "Extraction failed" });
         toast({
           title: "Extraction failed",
@@ -372,30 +392,39 @@ export const PdfDecoderGenerator = () => {
   };
 
   const startPollingForGeneration = (jobId: string) => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
+    stopPolling();
+    setPollCount(0);
+    pollStartTimeRef.current = Date.now();
+
+    const TIMEOUT_MS = 300000; // 5 minutes max for generation
 
     const poll = async () => {
+      // Check timeout
+      if (pollStartTimeRef.current && Date.now() - pollStartTimeRef.current > TIMEOUT_MS) {
+        stopPolling();
+        setState({ step: "failed", jobId, error: "Generation timed out after 5 minutes" });
+        toast({
+          title: "Generation timeout",
+          description: "The generation is taking longer than expected. Please check Azure Portal.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setPollCount(prev => prev + 1);
       const job = await getJob(jobId);
       
       if (!job) return;
 
       if (job.status === "Done") {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
+        stopPolling();
         setState({ step: "done", jobId });
         toast({
           title: "Generation complete",
           description: "Your decoder artifacts are ready for download",
         });
       } else if (job.status === "Failed") {
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
+        stopPolling();
         setState({ step: "failed", jobId, error: job.error || "Generation failed" });
         toast({
           title: "Generation failed",
@@ -545,10 +574,29 @@ export const PdfDecoderGenerator = () => {
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center space-y-4">
               <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <h3 className="text-lg font-semibold">Extracting with Azure Document Intelligence...</h3>
                 <p className="text-sm text-muted-foreground">This may take 10-20 seconds</p>
+                {pollCount > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Checked {pollCount} time{pollCount !== 1 ? 's' : ''} • Will timeout after 2 minutes
+                  </p>
+                )}
               </div>
+              <Button
+                onClick={() => {
+                  stopPolling();
+                  setState({ step: "idle" });
+                  toast({
+                    title: "Cancelled",
+                    description: "Extraction cancelled",
+                  });
+                }}
+                variant="outline"
+                data-testid="button-cancel-extraction"
+              >
+                Cancel
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -675,10 +723,29 @@ export const PdfDecoderGenerator = () => {
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center space-y-4">
               <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <h3 className="text-lg font-semibold">Generating decoder artifacts...</h3>
-                <p className="text-sm text-muted-foreground">This may take a minute</p>
+                <p className="text-sm text-muted-foreground">This may take 1-2 minutes</p>
+                {pollCount > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Checked {pollCount} time{pollCount !== 1 ? 's' : ''} • Will timeout after 5 minutes
+                  </p>
+                )}
               </div>
+              <Button
+                onClick={() => {
+                  stopPolling();
+                  setState({ step: "editing", jobId: state.jobId, evidenceContent });
+                  toast({
+                    title: "Cancelled",
+                    description: "Generation cancelled",
+                  });
+                }}
+                variant="outline"
+                data-testid="button-cancel-generation"
+              >
+                Cancel
+              </Button>
             </div>
           </CardContent>
         </Card>
