@@ -20,7 +20,11 @@ export default defineConfig(({ mode }) => ({
       port: 5000,
     },
     proxy: {
-      '/api': {
+      '/api/device-model-finder': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/api/model-db-insertion': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
