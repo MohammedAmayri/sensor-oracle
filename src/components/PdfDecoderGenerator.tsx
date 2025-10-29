@@ -37,10 +37,6 @@ interface JobResponse {
 const FUNC_BASE = import.meta.env.VITE_FUNC_BASE || "";
 const FUNC_KEY = import.meta.env.VITE_FUNC_KEY || "";
 
-console.log("PDF Decoder Generator - Environment Check:");
-console.log("FUNC_BASE:", FUNC_BASE ? `${FUNC_BASE.substring(0, 20)}...` : "NOT SET");
-console.log("FUNC_KEY:", FUNC_KEY ? "SET (hidden)" : "NOT SET");
-
 export const PdfDecoderGenerator = () => {
   const [state, setState] = useState<WorkflowState>({ step: "idle" });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
