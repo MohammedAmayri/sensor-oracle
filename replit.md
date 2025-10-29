@@ -1,11 +1,11 @@
 # The Sensor Whisperer (sensor-oracle)
 
 ## Overview
-A React-based web application for IoT device model discovery and database management. The app features an AI-driven interface for finding device models and inserting model information into a database.
+A React-based web application for IoT device model discovery, database management, and PDF decoder generation. The app features an AI-driven interface for finding device models, inserting model information into a database, and generating decoder code from PDF documentation.
 
-**Project Type:** Frontend-only React Application
+**Project Type:** Frontend-only React Application with Azure Functions integration
 **Stack:** Vite + React + TypeScript + shadcn/ui + Tailwind CSS
-**Language:** Swedish (Swedish interface)
+**Language:** Mixed (Swedish UI for DB tools, English for PDF Decoder Generator)
 
 ## Current State
 - ✅ Vite dev server configured for Replit (port 5000, host 0.0.0.0)
@@ -29,15 +29,16 @@ A React-based web application for IoT device model discovery and database manage
 ```
 src/
   components/
-    ui/                    # shadcn/ui components
-    DeviceModelFinder.tsx  # IoT device model search component
-    ModelDBInsertion.tsx   # Database insertion component
+    ui/                       # shadcn/ui components
+    DeviceModelFinder.tsx     # IoT device model search component
+    ModelDBInsertion.tsx      # Database insertion component
+    PdfDecoderGenerator.tsx   # PDF decoder generation workflow
   pages/
-    Index.tsx              # Main page with tabs
-    NotFound.tsx           # 404 page
-  App.tsx                  # App root with routing
-  main.tsx                 # Entry point
-  index.css              # Global styles and theme
+    Index.tsx                 # Main page with tabs for all features
+    NotFound.tsx              # 404 page
+  App.tsx                     # App root with routing
+  main.tsx                    # Entry point
+  index.css                   # Global styles and theme
 ```
 
 ### Key Features
@@ -58,6 +59,30 @@ src/
    - Multi-platform SQL generation (ThingPark, Radonova, Chirpstack, Kameror MKB Net, Netmore)
    - Editable attribute mappings with full control
    - Platform-specific SQL formatting
+   - Fixed duplicate attribute issue when updating attributes
+
+3. **PDF Decoder Generator**
+   - Complete 3-step workflow for generating decoder code from PDF documentation
+   - **Step 1: Upload PDF**
+     - Upload PDF files for extraction using Azure Document Intelligence
+     - Automatic polling for extraction completion (10-20 seconds typical)
+     - Progress indicators and status updates
+   - **Step 2: Review & Edit Evidence**
+     - Displays extracted evidence content in editable textarea
+     - Save functionality with SAS blob storage write
+     - Automatic SAS URL refresh and retry on expiry (403 errors)
+   - **Step 3: Configure & Generate**
+     - Select output type (C#, Python, JavaScript)
+     - Customizable general and special prompts (collapsible sections)
+     - Automatic polling for generation completion
+     - Download artifacts: result.json, fullDecoder, consoleDecoder
+     - Automatic SAS URL refresh for downloads on expiry
+   - **Error Handling**
+     - Comprehensive error messages for all failure scenarios
+     - Transparent retry logic for expired SAS URLs
+     - Failed state with options to retry or start over
+   - **State Machine**: idle → uploaded → extracting → extracted → editing → generating → done/failed
+   - **Azure Integration**: Uses FUNC_BASE and FUNC_KEY environment variables for authentication
 
 ## Configuration
 
@@ -91,8 +116,21 @@ src/
 - Node.js 20 (nodejs-20)
 - Package manager: npm
 - All dependencies managed via package.json
+- **Environment Variables (Secrets)**:
+  - `FUNC_BASE`: Azure Functions base URL (e.g., https://your-app.azurewebsites.net)
+  - `FUNC_KEY`: Azure Functions authentication key
+  - Accessed via `import.meta.env.VITE_FUNC_BASE` and `import.meta.env.VITE_FUNC_KEY` in frontend
 
 ## Recent Changes
+- **2025-10-29:** Added PDF Decoder Generator feature
+  - Implemented complete 3-step workflow for PDF → Evidence → Generate → Download
+  - Integrated with Azure Functions backend for document intelligence
+  - Added SAS blob storage read/write with automatic URL refresh on expiry
+  - Created state machine for workflow management with polling for async operations
+  - Added comprehensive error handling and user-friendly toast notifications
+  - Updated navigation to include third tab for PDF Decoder Generator
+  - Fixed duplicate attributes bug in Model DB Insertion component
+
 - **2025-10-06:** Enhanced Model DB Insertion functionality
   - Added smart malformed JSON detection and automatic repair
   - Implemented "Fix JSON" button that appears when JSON needs fixing
@@ -107,7 +145,9 @@ src/
   - Added preview server configuration
 
 ## Notes
-- The application uses Swedish language for the UI
+- The application uses mixed languages: Swedish for DB tools, English for PDF Decoder Generator
 - Component tagger (lovable-tagger) is included for development mode
 - All UI components are from shadcn/ui library
 - The app features a gradient background with animated elements
+- PDF Decoder Generator requires Azure Functions backend to be running
+- SAS URLs have time-limited tokens; automatic refresh handles expiry transparently
