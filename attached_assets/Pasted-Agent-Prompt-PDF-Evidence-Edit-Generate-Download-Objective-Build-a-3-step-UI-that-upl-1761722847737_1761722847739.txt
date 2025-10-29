@@ -1,0 +1,250 @@
+Agent Prompt — “PDF → Evidence → Edit → Generate → Download”
+Objective
+
+Build a 3-step UI that:
+
+uploads a PDF and creates a job,
+
+previews and edits the extracted evidence (via SAS READ/WRITE),
+
+starts generation, then polls and downloads artifacts — no new endpoints.
+
+Environment / Secrets (injected by host app)
+
+FUNC_BASE: base URL of the Azure Functions app, e.g. https://<app>.azurewebsites.net
+
+FUNC_KEY: function key for auth (send in header x-functions-key)
+
+Storage CORS is configured to allow GET, PUT, OPTIONS from our origin and headers listed below.
+
+Endpoints (do exactly these)
+
+CreateJobAndUpload — POST {FUNC_BASE}/api/CreateJobAndUpload
+
+Body: raw PDF bytes (not multipart)
+
+Headers:
+
+x-functions-key: {FUNC_KEY}
+
+Content-Type: application/pdf (accept values starting with application/pdf)
+
+Response 200: { "ok": true, "id": "<jobId>" }
+
+GetJob — GET {FUNC_BASE}/api/job/{jobId}
+
+Headers: x-functions-key: {FUNC_KEY}
+
+Response 200 (example):
+
+{
+  "ok": true,
+  "id": "…",
+  "status": "Extracted",
+  "error": null,
+  "evidenceReadUrl": "https://.../evidence/{id}.md?...SAS...",
+  "evidenceWriteUrl": "https://.../evidence/{id}.md?...SAS...",
+  "evidenceMdUrl": "https://.../evidence/{id}.md?...SAS...",
+  "evidenceTxtUrl": "https://.../evidence/{id}.txt?...SAS...",
+  "resultJsonUrl": null,
+  "fullDecoderUrl": null,
+  "consoleDecoderUrl": null
+}
+
+
+evidenceReadUrl: SAS READ (prefer .md, fallback .txt)
+
+evidenceWriteUrl: SAS WRITE (single-blob, short TTL)
+
+Later, when status = "Done", the artifact SAS URLs will be non-null.
+
+StartGeneration — POST {FUNC_BASE}/api/StartGeneration
+
+Headers:
+
+x-functions-key: {FUNC_KEY}
+
+Content-Type: application/json
+
+Body (example):
+
+{
+  "jobId": "<jobId>",
+  "outputType": "csharp",
+  "generalPrompt": "Keep code idiomatic .NET 8. Minimal allocations.",
+  "specialPrompt": "Normalize GPS fields to WGS84 if present."
+}
+
+
+Response 202/200: { "ok": true, "queued": true, "id": "<jobId>", "queue": "gen-requests" }
+
+Note: The blob trigger runs automatically after upload; we just poll GetJob until status="Extracted".
+
+UI / UX — Required Screens & Behavior
+Step 1 — Upload
+
+Components: file chooser (PDF only), “Upload” button, progress indicator.
+
+Action:
+
+POST /api/CreateJobAndUpload with raw PDF bytes.
+
+On success, store jobId and move to “Extracting…” state.
+
+State: show spinner and poll GET /api/job/{jobId} every 2s until:
+
+status="Extracted" → proceed to Step 2.
+
+status="Failed" → show error and allow retry.
+
+Edge: extraction can take 10–20s; keep the spinner and a text “Extracting with Azure Document Intelligence…”
+
+Step 2 — Review & Edit Evidence
+
+Components:
+
+Read-only “Original evidence” panel (optional),
+
+Editor textarea/markdown editor,
+
+“Save” (writes to blob via SAS),
+
+“Start generation” (go to Step 3).
+
+Data:
+
+Use evidenceReadUrl to GET text and load editor.
+
+Use evidenceWriteUrl to PUT edited content back to the same blob.
+
+PUT must include headers:
+
+x-ms-blob-type: BlockBlob
+
+If editing .md:
+
+x-ms-blob-content-type: text/markdown; charset=utf-8
+
+Content-Type: text/markdown; charset=utf-8
+
+If editing .txt:
+
+x-ms-blob-content-type: text/plain; charset=utf-8
+
+Content-Type: text/plain; charset=utf-8
+
+After saving, show toast “Saved”. If PUT fails with 403 or “Signature expired”, refresh by calling GET /api/job/{jobId} to get a fresh evidenceWriteUrl, then retry.
+
+Step 3 — Generate & Download
+
+Components:
+
+outputType select (e.g., csharp, python),
+
+generalPrompt textarea (collapsed by default, expandable),
+
+specialPrompt textarea (collapsed by default, expandable),
+
+“Start generation” button,
+
+Status area (Generating… with spinner),
+
+Downloads section for: result.json, fullDecoder.cs, consoleDecoder.cs.
+
+Flow:
+
+POST /api/StartGeneration with current jobId and user options.
+
+Poll GET /api/job/{jobId} every 2s:
+
+status="Generating" → keep spinner.
+
+status="Done" → render download links using SAS URLs.
+
+status="Failed" → show error and offer “Back to edit” or “Retry generation”.
+
+Required Logic (state machine)
+IDLE
+  -> (Upload PDF) -> UPLOADED
+UPLOADED
+  -> (Poll GetJob until Extracted) -> EXTRACTED
+EXTRACTED
+  -> (GET evidenceReadUrl -> editor) -> EDITING
+EDITING
+  -> (PUT evidenceWriteUrl) -> EDIT_SAVED (toast)
+  -> (StartGeneration) -> GENERATING
+GENERATING
+  -> (Poll GetJob until Done) -> DONE
+  -> (If Failed) -> FAILED
+DONE
+  -> (Show SAS links: resultJsonUrl, fullDecoderUrl, consoleDecoderUrl)
+FAILED
+  -> (Show error; allow return to EDITING or retry StartGeneration)
+
+
+Polling cadence: 2s; exponential backoff is fine up to 5s if you prefer.
+
+SAS expiry handling: if any SAS GET/PUT returns 403/AuthenticationFailed, call GetJob again and retry with the new SAS.
+
+Concrete Request Examples
+Upload (Step 1)
+curl -X POST "$FUNC_BASE/api/CreateJobAndUpload" \
+  -H "x-functions-key: $FUNC_KEY" \
+  -H "Content-Type: application/pdf" \
+  --data-binary @./yourfile.pdf
+# → { "ok": true, "id": "<jobId>" }
+
+Poll / Get evidence URLs
+curl "$FUNC_BASE/api/job/<jobId>" -H "x-functions-key: $FUNC_KEY"
+# → use .evidenceReadUrl (preview) and .evidenceWriteUrl (save edits)
+
+Save edited evidence via SAS WRITE (Step 2)
+curl -X PUT "<evidenceWriteUrl>" \
+  -H "x-ms-blob-type: BlockBlob" \
+  -H "x-ms-blob-content-type: text/markdown; charset=utf-8" \
+  -H "Content-Type: text/markdown; charset=utf-8" \
+  --data-binary @edited.md
+
+Start generation (Step 3)
+curl -X POST "$FUNC_BASE/api/StartGeneration" \
+  -H "x-functions-key: $FUNC_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jobId": "<jobId>",
+    "outputType": "csharp",
+    "generalPrompt": "Keep code idiomatic .NET 8. Minimal allocations.",
+    "specialPrompt": "Normalize GPS fields to WGS84 if present."
+  }'
+
+Poll for artifacts & download
+# poll:
+curl "$FUNC_BASE/api/job/<jobId>" -H "x-functions-key: $FUNC_KEY"
+
+# when status=Done:
+curl -L "<resultJsonUrl>" -o result.json
+curl -L "<fullDecoderUrl>" -o fullDecoder.cs
+curl -L "<consoleDecoderUrl>" -o consoleDecoder.cs
+
+Error Handling Rules (agent must follow)
+
+If CreateJobAndUpload returns 400 due to Content-Type, retry with only raw PDF (no multipart).
+
+If GetJob returns status="Failed", surface error to the user and provide “Try again” options.
+
+If SAS PUT/GET returns 403 or mentions signature/expiry, refresh via GetJob and retry once.
+
+If StartGeneration says “Job not ready”, ensure status="Extracted" and that evidence exists.
+
+Show small inline help:
+
+“If Save fails with 403, we’ll refresh the link and try again.”
+
+“If downloads fail, click ‘Refresh links’ (re-fetch job) and retry.”
+
+Acceptance Criteria
+
+End-to-end flow works with a single PDF upload in < 60s typical.
+
+User can see extracted content, edit and save it, and generate artifacts without leaving the page.
+
+All downloads use time-limited SAS; no secrets exposed beyond x-functions-key (ideally proxied by your backend in production).
