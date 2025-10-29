@@ -1,7 +1,8 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DeviceModelFinder } from "@/components/DeviceModelFinder";
 import { ModelDBInsertion } from "@/components/ModelDBInsertion";
-import { Brain, Database, Menu } from "lucide-react";
+import { PdfDecoderGenerator } from "@/components/PdfDecoderGenerator";
+import { Brain, Database, Menu, FileCode } from "lucide-react";
 
 const Index = () => {
   return (
@@ -29,7 +30,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="finder" className="max-w-6xl mx-auto">
-          <TabsList className="glass-card grid w-full grid-cols-2 mb-8 p-1 h-auto rounded-lg">
+          <TabsList className="glass-card grid w-full grid-cols-3 mb-8 p-1 h-auto rounded-lg">
             <TabsTrigger 
               value="finder" 
               className="gap-2 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
@@ -44,6 +45,13 @@ const Index = () => {
               <Database className="w-4 h-4" />
               <span className="font-medium">Device Model DB Insertion</span>
             </TabsTrigger>
+            <TabsTrigger 
+              value="decoder" 
+              className="gap-2 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
+            >
+              <FileCode className="w-4 h-4" />
+              <span className="font-medium">PDF Decoder Generator</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="finder" className="space-y-6 animate-in fade-in-50 duration-300">
@@ -52,6 +60,10 @@ const Index = () => {
 
           <TabsContent value="insertion" className="space-y-6 animate-in fade-in-50 duration-300">
             <ModelDBInsertion />
+          </TabsContent>
+
+          <TabsContent value="decoder" className="space-y-6 animate-in fade-in-50 duration-300">
+            <PdfDecoderGenerator />
           </TabsContent>
         </Tabs>
       </div>
