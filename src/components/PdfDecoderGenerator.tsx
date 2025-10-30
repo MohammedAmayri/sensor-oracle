@@ -390,13 +390,31 @@ Rules:
       });
 
       if (!response.ok) {
-        throw new Error(`Generation failed: ${response.statusText}`);
+        // Try to get error details from response body
+        let errorMessage = `Server error (${response.status})`;
+        try {
+          const errorText = await response.text();
+          console.error("StartGeneration error response:", errorText);
+          
+          // Try to parse as JSON first
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMessage = errorData.error || errorData.message || errorText.substring(0, 200);
+          } catch {
+            // Not JSON, use text
+            errorMessage = errorText.substring(0, 200);
+          }
+        } catch {
+          errorMessage = `${response.status} ${response.statusText}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       
       if (!data.ok) {
-        throw new Error("Generation request failed");
+        throw new Error(data.error || "Generation request failed");
       }
 
       toast({
@@ -407,6 +425,7 @@ Rules:
       setState({ step: "generating", jobId: state.jobId });
       startPollingForGeneration(state.jobId);
     } catch (error) {
+      console.error("Generation error:", error);
       toast({
         title: "Generation failed",
         description: error instanceof Error ? error.message : "Could not start generation",
