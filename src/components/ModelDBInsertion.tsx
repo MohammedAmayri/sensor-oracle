@@ -737,32 +737,33 @@ export const ModelDBInsertion = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="decodedData">Decoded Data (JSON)</Label>
-              <div className="relative">
-                <Textarea
-                  id="decodedData"
-                  data-testid="input-decoded-data"
-                  placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
-                  value={decodedData}
-                  onChange={(e) => setDecodedData(e.target.value)}
-                  className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
-                />
-                {isJsonMalformed(decodedData) && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={handleFixJson}
-                    className="absolute top-2 right-2 bg-background/95 hover:bg-accent/20 border-accent/50"
-                    data-testid="button-fix-json"
-                  >
-                    <Wand2 className="w-3 h-3 mr-1" />
-                    Fix JSON
-                  </Button>
-                )}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="decodedData">Decoded Data (JSON)</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isJsonMalformed(decodedData) ? "default" : "outline"}
+                  onClick={handleFixJson}
+                  disabled={!isJsonMalformed(decodedData)}
+                  className="h-7"
+                  data-testid="button-fix-json"
+                >
+                  <Wand2 className="w-3 h-3 mr-1" />
+                  {isJsonMalformed(decodedData) ? "Fix JSON" : "JSON OK"}
+                </Button>
               </div>
+              <Textarea
+                id="decodedData"
+                data-testid="input-decoded-data"
+                placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
+                value={decodedData}
+                onChange={(e) => setDecodedData(e.target.value)}
+                className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
+              />
               <p className="text-xs text-muted-foreground">
-                Om JSON är felformatterad, klicka på "Fix JSON" för att automatiskt rätta till vanliga fel
+                {isJsonMalformed(decodedData) 
+                  ? "⚠️ Felformatterad JSON upptäckt - klicka 'Fix JSON' för att rätta till automatiskt"
+                  : "✅ Klicka 'Fix JSON' om du behöver rätta till felformatterad JSON"}
               </p>
             </div>
             
