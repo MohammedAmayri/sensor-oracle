@@ -118,11 +118,6 @@ export const ModelDBInsertion = () => {
   const [editableMappedAttributes, setEditableMappedAttributes] = useState<AdditionalAttribute[]>([]);
   const [selectedPlatformIds, setSelectedPlatformIds] = useState<number[]>([1]);
 
-  const cleanDoubleQuotes = (text: string): string => {
-    // Replace escaped double quotes ("") with single quotes (")
-    return text.replace(/""/g, '"');
-  };
-
   const isJsonMalformed = (text: string): boolean => {
     if (!text.trim()) return false;
     
@@ -749,7 +744,7 @@ export const ModelDBInsertion = () => {
                   data-testid="input-decoded-data"
                   placeholder='{"UplinkType": "Unknown condition code", "FrameCounter": 5, ...}'
                   value={decodedData}
-                  onChange={(e) => setDecodedData(cleanDoubleQuotes(e.target.value))}
+                  onChange={(e) => setDecodedData(e.target.value)}
                   className="min-h-[200px] code-font text-sm bg-input/50 border-border/50 focus:border-primary"
                 />
                 {isJsonMalformed(decodedData) && (
@@ -767,7 +762,7 @@ export const ModelDBInsertion = () => {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Obs: Dubbla citattecken ("") ersätts automatiskt med enkla ("). Numeriska värden med kommatecken (t.ex. "35,0") konverteras automatiskt till tal
+                Om JSON är felformatterad, klicka på "Fix JSON" för att automatiskt rätta till vanliga fel
               </p>
             </div>
             
