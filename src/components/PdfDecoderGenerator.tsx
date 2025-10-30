@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Upload, FileText, Download, Save, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Upload, FileText, Download, Save, RefreshCw, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -104,6 +104,14 @@ Rules:
   const [isGeneralPromptOpen, setIsGeneralPromptOpen] = useState(false);
   const [isSpecialPromptOpen, setIsSpecialPromptOpen] = useState(false);
   const [pollCount, setPollCount] = useState(0);
+  const [artifactContents, setArtifactContents] = useState<{
+    resultJson: string;
+    fullDecoder: string;
+    consoleDecoder: string;
+  }>({ resultJson: "", fullDecoder: "", consoleDecoder: "" });
+  const [isResultJsonOpen, setIsResultJsonOpen] = useState(true);
+  const [isFullDecoderOpen, setIsFullDecoderOpen] = useState(false);
+  const [isConsoleDecoderOpen, setIsConsoleDecoderOpen] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
   const pollStartTimeRef = useRef<number | null>(null);
 
@@ -434,6 +442,45 @@ Rules:
     }
   };
 
+  const loadArtifacts = async (job: JobResponse) => {
+    try {
+      const [resultJsonRes, fullDecoderRes, consoleDecoderRes] = await Promise.all([
+        job.resultJsonUrl ? fetch(job.resultJsonUrl).then(r => r.ok ? r.text() : "") : Promise.resolve(""),
+        job.fullDecoderUrl ? fetch(job.fullDecoderUrl).then(r => r.ok ? r.text() : "") : Promise.resolve(""),
+        job.consoleDecoderUrl ? fetch(job.consoleDecoderUrl).then(r => r.ok ? r.text() : "") : Promise.resolve(""),
+      ]);
+
+      setArtifactContents({
+        resultJson: resultJsonRes,
+        fullDecoder: fullDecoderRes,
+        consoleDecoder: consoleDecoderRes,
+      });
+    } catch (error) {
+      console.error("Error loading artifacts:", error);
+      toast({
+        title: "Failed to load artifacts",
+        description: "Could not fetch artifact content. You can still download them.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied!",
+        description: `${label} copied to clipboard`,
+      });
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Could not copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
+
   const startPollingForGeneration = (jobId: string) => {
     stopPolling();
     setPollCount(0);
@@ -465,9 +512,10 @@ Rules:
       if (hasArtifacts) {
         stopPolling();
         setState({ step: "done", jobId });
+        loadArtifacts(job);
         toast({
           title: "Generation complete",
-          description: "Your decoder artifacts are ready for download",
+          description: "Your decoder artifacts are ready to view",
         });
       } else if (job.status === "Failed" || job.error) {
         stopPolling();
@@ -797,71 +845,183 @@ Rules:
         </Card>
       )}
 
-      {/* Downloads */}
+      {/* Artifacts Display */}
       {state.step === "done" && jobData && (
-        <Card className="glass-card" data-testid="card-downloads">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Download className="w-5 h-5" />
-              Download Artifacts
-            </CardTitle>
-            <CardDescription>
-              Your decoder artifacts are ready for download
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-              <p className="text-sm font-medium text-green-900 dark:text-green-100">
-                ✅ Generation complete! Download your artifacts below:
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              <Button
-                onClick={() => downloadFile(jobData.resultJsonUrl, "result.json")}
-                variant="outline"
-                className="justify-start"
-                data-testid="button-download-json"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download result.json
-              </Button>
-              <Button
-                onClick={() => downloadFile(jobData.fullDecoderUrl, "fullDecoder.cs")}
-                variant="outline"
-                className="justify-start"
-                data-testid="button-download-full"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download fullDecoder.{outputType === "csharp" ? "cs" : outputType === "python" ? "py" : "js"}
-              </Button>
-              <Button
-                onClick={() => downloadFile(jobData.consoleDecoderUrl, "consoleDecoder.cs")}
-                variant="outline"
-                className="justify-start"
-                data-testid="button-download-console"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download consoleDecoder.{outputType === "csharp" ? "cs" : outputType === "python" ? "py" : "js"}
-              </Button>
-            </div>
-
-            <Button
-              onClick={() => getJob(state.jobId)}
-              variant="ghost"
-              size="sm"
-              className="w-full"
-              data-testid="button-refresh-links"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh download links
-            </Button>
-
-            <p className="text-xs text-muted-foreground text-center">
-              💡 If downloads fail, click 'Refresh download links' and retry
+        <div className="space-y-4">
+          <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+            <p className="text-sm font-medium text-green-900 dark:text-green-100">
+              ✅ Generation complete! View and copy your artifacts below:
             </p>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* result.json */}
+          <Card className="glass-card" data-testid="card-result-json">
+            <Collapsible open={isResultJsonOpen} onOpenChange={setIsResultJsonOpen}>
+              <CardHeader className="pb-3">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="w-4 h-4" />
+                      result.json
+                    </CardTitle>
+                    {isResultJsonOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-2">
+                  {artifactContents.resultJson ? (
+                    <>
+                      <Textarea
+                        value={artifactContents.resultJson}
+                        readOnly
+                        className="min-h-[300px] font-mono text-xs"
+                        data-testid="textarea-result-json"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => copyToClipboard(artifactContents.resultJson, "result.json")}
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-copy-json"
+                        >
+                          <Copy className="w-3 h-3 mr-2" />
+                          Copy
+                        </Button>
+                        <Button
+                          onClick={() => downloadFile(jobData.resultJsonUrl, "result.json")}
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-download-json"
+                        >
+                          <Download className="w-3 h-3 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+
+          {/* fullDecoder */}
+          <Card className="glass-card" data-testid="card-full-decoder">
+            <Collapsible open={isFullDecoderOpen} onOpenChange={setIsFullDecoderOpen}>
+              <CardHeader className="pb-3">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="w-4 h-4" />
+                      fullDecoder.{outputType === "csharp" ? "cs" : outputType === "python" ? "py" : "js"}
+                    </CardTitle>
+                    {isFullDecoderOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-2">
+                  {artifactContents.fullDecoder ? (
+                    <>
+                      <Textarea
+                        value={artifactContents.fullDecoder}
+                        readOnly
+                        className="min-h-[400px] font-mono text-xs"
+                        data-testid="textarea-full-decoder"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => copyToClipboard(artifactContents.fullDecoder, "fullDecoder")}
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-copy-full"
+                        >
+                          <Copy className="w-3 h-3 mr-2" />
+                          Copy
+                        </Button>
+                        <Button
+                          onClick={() => downloadFile(jobData.fullDecoderUrl, `fullDecoder.${outputType === "csharp" ? "cs" : outputType === "python" ? "py" : "js"}`)}
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-download-full"
+                        >
+                          <Download className="w-3 h-3 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+
+          {/* consoleDecoder */}
+          <Card className="glass-card" data-testid="card-console-decoder">
+            <Collapsible open={isConsoleDecoderOpen} onOpenChange={setIsConsoleDecoderOpen}>
+              <CardHeader className="pb-3">
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="w-4 h-4" />
+                      consoleDecoder.{outputType === "csharp" ? "cs" : outputType === "python" ? "py" : "js"}
+                    </CardTitle>
+                    {isConsoleDecoderOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </CardHeader>
+              <CollapsibleContent>
+                <CardContent className="space-y-2">
+                  {artifactContents.consoleDecoder ? (
+                    <>
+                      <Textarea
+                        value={artifactContents.consoleDecoder}
+                        readOnly
+                        className="min-h-[400px] font-mono text-xs"
+                        data-testid="textarea-console-decoder"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => copyToClipboard(artifactContents.consoleDecoder, "consoleDecoder")}
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-copy-console"
+                        >
+                          <Copy className="w-3 h-3 mr-2" />
+                          Copy
+                        </Button>
+                        <Button
+                          onClick={() => downloadFile(jobData.consoleDecoderUrl, `consoleDecoder.${outputType === "csharp" ? "cs" : outputType === "python" ? "py" : "js"}`)}
+                          variant="outline"
+                          size="sm"
+                          data-testid="button-download-console"
+                        >
+                          <Download className="w-3 h-3 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+
+          <Button
+            onClick={resetWorkflow}
+            variant="outline"
+            className="w-full"
+            data-testid="button-start-new"
+          >
+            Start New Generation
+          </Button>
+        </div>
       )}
 
 
