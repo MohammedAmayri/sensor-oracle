@@ -98,7 +98,8 @@ Rules:
   exactly what your decoder computes on payloadExample.
 - Ban: string token switching on textual tokens; any JavaScript keywords (let/const/function).
 - If evidence is ambiguous/insufficient, set validation.hasDecode=false and list reasons; still
-  return the full JSON object.`);
+  return the full JSON object.
+  - Always include this method: SplitPayloadArray`);
   const [specialPrompt, setSpecialPrompt] = useState("");
   const [jobData, setJobData] = useState<JobResponse | null>(null);
   const [isGeneralPromptOpen, setIsGeneralPromptOpen] = useState(false);
@@ -618,7 +619,8 @@ Rules:
   exactly what your decoder computes on payloadExample.
 - Ban: string token switching on textual tokens; any JavaScript keywords (let/const/function).
 - If evidence is ambiguous/insufficient, set validation.hasDecode=false and list reasons; still
-  return the full JSON object.`);
+  return the full JSON object.
+  - Always include this method(whole body): SplitPayloadArray`);
     setSpecialPrompt("");
     setJobData(null);
     
