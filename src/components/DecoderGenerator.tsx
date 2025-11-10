@@ -431,6 +431,155 @@ export const DecoderGenerator = () => {
     }
   };
 
+  // Decentlab API functions
+  const runDecentlabStep1GenerateRules = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("decentlab/rules/generate", {
+        documentation,
+        sensorPrompt: sensorSpecificPrompt || undefined,
+      });
+      setRulesBlock(result.rulesBlock);
+      goToStep(findIndexByStep("step2_rules"), { markComplete: true });
+      toast({
+        title: "Step 1 complete",
+        description: "Decentlab rules generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 1 failed",
+        description: error instanceof Error ? error.message : "Could not generate rules",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const runDecentlabStep2RefineRules = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("decentlab/rules/refine", {
+        documentation,
+        sensorPrompt: sensorSpecificPrompt || undefined,
+        currentRulesBlock: rulesBlock,
+        userFeedback: sensorSpecificPrompt || undefined,
+      });
+      setRulesBlock(result.rulesBlock);
+      toast({
+        title: "Rules refined",
+        description: "Decentlab rules updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Refine failed",
+        description: error instanceof Error ? error.message : "Could not refine rules",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const runDecentlabStep3ExtractExamples = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("decentlab/examples/extract", {
+        documentation,
+      });
+      setExamplesTablesMd(result.examplesMarkdown);
+      goToStep(findIndexByStep("step3_examples"), { markComplete: true });
+      toast({
+        title: "Step 2 complete",
+        description: "Examples extracted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 2 failed",
+        description: error instanceof Error ? error.message : "Could not extract examples",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const runDecentlabStep4GenerateDecoder = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("decentlab/decoder/generate", {
+        documentation,
+        rulesBlock,
+        examplesMarkdown: examplesTablesMd,
+      });
+      setDecoderCode(result.decoderCode);
+      goToStep(findIndexByStep("step5_decoder"), { markComplete: true });
+      toast({
+        title: "Step 3 complete",
+        description: "Decoder generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 3 failed",
+        description: error instanceof Error ? error.message : "Could not generate decoder",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const runDecentlabStep5StaticFeedback = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("decentlab/decoder/feedback", {
+        decoderCode,
+        rulesBlock,
+      });
+      setFeedbackMarkdown(result.feedback);
+      goToStep(findIndexByStep("step7_feedback"), { markComplete: true });
+      toast({
+        title: "Step 4 complete",
+        description: result.hasIssues ? "Feedback generated - issues found" : "Feedback generated - no issues",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 4 failed",
+        description: error instanceof Error ? error.message : "Could not generate feedback",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const runDecentlabStep6RefineDecoder = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("decentlab/decoder/refine", {
+        currentCode: decoderCode,
+        userFeedback: sensorSpecificPrompt || undefined,
+        documentation,
+        rulesBlock,
+        examplesMarkdown: examplesTablesMd,
+        decoderFeedback: feedbackMarkdown || undefined,
+      });
+      setDecoderCode(result.decoderCode);
+      toast({
+        title: "Decoder refined",
+        description: "Decoder updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Refine failed",
+        description: error instanceof Error ? error.message : "Could not refine decoder",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -486,7 +635,7 @@ export const DecoderGenerator = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="milesight">Milesight</SelectItem>
-                  <SelectItem value="decentlab" disabled>DecentLab (Coming Soon)</SelectItem>
+                  <SelectItem value="decentlab">DecentLab</SelectItem>
                   <SelectItem value="dragino" disabled>Dragino (Coming Soon)</SelectItem>
                   <SelectItem value="watteco" disabled>Watteco (Coming Soon)</SelectItem>
                   <SelectItem value="enginko" disabled>Enginko (Coming Soon)</SelectItem>
