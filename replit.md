@@ -122,6 +122,22 @@ src/
   - Accessed via `import.meta.env.VITE_FUNC_BASE` and `import.meta.env.VITE_FUNC_KEY` in frontend
 
 ## Recent Changes
+- **2025-11-10:** Added Decoder Generator feature (4th tab)
+  - Manufacturer-based decoder generation workflow (Milesight, DecentLab, Dragino, Watteco, Enginko)
+  - Implemented Milesight workflow with 7-step process:
+    1. GenerateCompositeSpec - Discover TLVs and bitfields
+    2. GenerateRulesBlock - Generate initial decoding rules
+    3. ExtractExamplesTables - Extract example tables from documentation
+    4. ReconcileRulesBlock - Reconcile rules with examples
+    5. GenerateDecoder - Generate C# decoder code
+    6. AutoRepairDecoder - Auto-repair decoder issues
+    7. DecoderFeedback - Get feedback and patch suggestions
+  - Integrated with Azure Functions (DECODERGEN_BASE, DECODERGEN_KEY)
+  - PDF upload with Azure Document Intelligence extraction
+  - Side-by-side markdown/HTML viewer for documentation review
+  - Step-by-step UI with editable intermediate results
+  - Added VITE_DECODERGEN_BASE and VITE_DECODERGEN_KEY environment variables
+
 - **2025-10-29:** Added PDF Decoder Generator feature
   - Implemented complete 3-step workflow for PDF → Evidence → Generate → Download
   - Integrated with Azure Functions backend for document intelligence
