@@ -1,0 +1,173 @@
+3. HTTP contracts: request / response payloads
+3.1 GenerateDraginoRules (Step 1 – rules from docs)
+
+HTTP method & route
+
+POST /api/GenerateDraginoRules
+
+Request body (JSON)
+
+{
+  "documentation": "FULL vendor markdown / HTML as a single string",
+  "sensorSpecificPrompt": "Optional free-text guidance for this device"
+}
+
+
+documentation (required): full doc text you used in the console app (markdown/HTML).
+
+sensorSpecificPrompt (optional): same as your console “sensor-specific prompt” step; can be null or omitted.
+
+Because you use:
+
+new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+
+
+the following are all accepted:
+
+documentation
+
+Documentation
+
+DOCUMENTATION
+
+etc.
+
+Successful response (200)
+
+{
+  "rulesBlock": "# DECODING RULES (LHT65)\n# - Payload = fixed-length byte array...\nMAP: offset=0 size=2 ...\n..."
+}
+
+
+Shape:
+
+public class GenerateDraginoRulesResponse
+{
+    public string RulesBlock { get; set; } = string.Empty;
+}
+
+
+Error responses
+
+Empty body:
+
+{ "error": "Request body is empty." }
+
+
+Invalid JSON (can’t parse):
+
+{
+  "error": "Invalid JSON.",
+  "details": "<JsonException.Message>"
+}
+
+
+Missing/empty documentation:
+
+{ "error": "Field 'documentation' is required." }
+
+
+OpenAI / internal failure (500):
+
+{ "error": "<exception message from DraginoOpenAiHelper>" }
+
+3.2 GenerateDraginoDecoder (Step 2 – C# decoder from rules)
+
+HTTP method & route
+
+POST /api/GenerateDraginoDecoder
+
+Request body (JSON)
+
+{
+  "rulesBlock": "# DECODING RULES (LHT65)\nMAP: offset=0 size=2 ...\nBIT: ...\nLOOKUP: ..."
+}
+
+
+rulesBlock (required): The full DECODING RULES text produced by Step 1, optionally edited in your UI.
+
+Again, property name is case-insensitive.
+
+Successful response (200)
+
+{
+  "decoderCode": "using System;\nusing System.Collections.Generic;\nusing Microsoft.AspNetCore.Mvc;\nusing Microsoft.Azure.Functions.Worker;\n\nnamespace DraginoDecoders\n{\n    public class DecoderDraginoLht65\n    {\n        [Function(\"DecodeDraginoLht65\")]\n        public IActionResult Run(...)\n        {\n            // ... generated code ...\n        }\n    }\n}\n"
+}
+
+
+Shape:
+
+public class GenerateDraginoDecoderResponse
+{
+    public string DecoderCode { get; set; } = string.Empty;
+}
+
+
+Error responses
+
+Empty body:
+
+{ "error": "Request body is empty." }
+
+
+Invalid JSON:
+
+{
+  "error": "Invalid JSON.",
+  "details": "<JsonException.Message>"
+}
+
+
+Missing/empty rulesBlock:
+
+{ "error": "Field 'rulesBlock' is required." }
+
+
+OpenAI / internal error (500):
+
+{ "error": "<exception message from DraginoOpenAiHelper>" }
+
+4. Recommended end-to-end workflow (HTTP version of your console app)
+
+This is the clean mental model:
+
+Step 0 (upstream, optional)
+
+Pull PDF → run Doc Intelligence → generate markdown/HTML.
+
+Your frontend/agent ends up with documentation: string.
+
+Step 1 – Generate DECODING RULES
+
+Call POST /api/GenerateDraginoRules with:
+
+{
+  "documentation": "<markdown/html from Step 0>",
+  "sensorSpecificPrompt": "This is LDS01; I care about door count & last open duration..."
+}
+
+
+Receive:
+
+{ "rulesBlock": " # DECODING RULES (LDS01)\n..." }
+
+
+Show rulesBlock in UI and let the user tweak it manually (this replaces ReviewAndMaybeEdit("RULES BLOCK") from the console app).
+
+Step 2 – Generate DECODER C#
+
+When the user is happy with the rules, call POST /api/GenerateDraginoDecoder:
+
+{
+  "rulesBlock": "<final edited rules block from Step 1>"
+}
+
+
+Receive:
+
+{ "decoderCode": "using System; ... public class DecoderDraginoLds01 { ... }" }
+
+
+Show the C# file in UI, allow edits/download, then drop it into your decoders repo / function app pipeline.
+
+Step 3 – Deploy + use decoder
