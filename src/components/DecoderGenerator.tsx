@@ -1,10 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Upload, FileText, Copy, Check, ArrowRight, Code2, RefreshCw } from "lucide-react";
+import { Loader2, Upload, FileText, Copy, Check, ArrowRight, Code2, RefreshCw, ArrowLeft, ChevronRight } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { uploadPdfFile, getJob, loadEvidenceWithRefresh, type JobResponse } from "@/lib/azureDocumentIntelligence";
@@ -29,6 +29,36 @@ type WorkflowStep =
   | "step7_feedback"
   | "complete";
 
+// Ordered workflow steps for navigation
+const WORKFLOW_STEPS: readonly WorkflowStep[] = [
+  "select_manufacturer",
+  "upload_doc",
+  "extracting",
+  "view_doc",
+  "step1_composite",
+  "step2_rules",
+  "step3_examples",
+  "step4_reconcile",
+  "step5_decoder",
+  "step6_repair",
+  "step7_feedback",
+];
+
+const STEP_TITLES: Record<WorkflowStep, string> = {
+  select_manufacturer: "Select Manufacturer",
+  upload_doc: "Upload PDF",
+  extracting: "Extracting...",
+  view_doc: "Review Documentation",
+  step1_composite: "1. Composite Spec",
+  step2_rules: "2. Rules Block",
+  step3_examples: "3. Examples",
+  step4_reconcile: "4. Reconcile",
+  step5_decoder: "5. Decoder",
+  step6_repair: "6. Auto-Repair",
+  step7_feedback: "7. Feedback",
+  complete: "Complete",
+};
+
 export const DecoderGenerator = () => {
   const [manufacturer, setManufacturer] = useState<Manufacturer | "">("");
   const [step, setStep] = useState<WorkflowStep>("select_manufacturer");
@@ -36,6 +66,10 @@ export const DecoderGenerator = () => {
   const [documentation, setDocumentation] = useState("");
   const [isExtracting, setIsExtracting] = useState(false);
   const [pollCount, setPollCount] = useState(0);
+  
+  // Navigation state
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [furthestCompletedIndex, setFurthestCompletedIndex] = useState(0);
   
   // Workflow state variables
   const [compositeSpec, setCompositeSpec] = useState("");
@@ -57,6 +91,55 @@ export const DecoderGenerator = () => {
   const DECODERGEN_BASE = import.meta.env.VITE_DECODERGEN_BASE;
   const DECODERGEN_KEY = import.meta.env.VITE_DECODERGEN_KEY;
 
+  // Sync step with currentIndex
+  useEffect(() => {
+    setStep(WORKFLOW_STEPS[currentIndex]);
+  }, [currentIndex]);
+
+  // Navigation helpers
+  const goToStep = (index: number, options?: { markComplete?: boolean }) => {
+    const clampedIndex = Math.max(0, Math.min(index, WORKFLOW_STEPS.length - 1));
+    setCurrentIndex(clampedIndex);
+    if (options?.markComplete && clampedIndex > furthestCompletedIndex) {
+      setFurthestCompletedIndex(clampedIndex);
+    }
+  };
+
+  const findIndexByStep = (targetStep: WorkflowStep): number => {
+    return WORKFLOW_STEPS.indexOf(targetStep);
+  };
+
+  const goToPreviousStep = () => {
+    if (currentIndex > 0 && !isProcessing) {
+      goToStep(currentIndex - 1);
+    }
+  };
+
+  const goToNextStep = () => {
+    if (currentIndex < WORKFLOW_STEPS.length - 1 && !isProcessing) {
+      // Only allow moving forward if next step already has data (user can review)
+      // or if we're within already completed range
+      const nextIndex = currentIndex + 1;
+      if (nextIndex <= furthestCompletedIndex) {
+        goToStep(nextIndex);
+      }
+    }
+  };
+
+  // Check if step data already exists
+  const hasStepData = (targetStep: WorkflowStep): boolean => {
+    switch (targetStep) {
+      case "step1_composite": return !!compositeSpec;
+      case "step2_rules": return !!rulesBlock;
+      case "step3_examples": return !!examplesTablesMd;
+      case "step4_reconcile": return !!rulesBlock;
+      case "step5_decoder": return !!decoderCode;
+      case "step6_repair": return !!decoderCode;
+      case "step7_feedback": return !!feedbackMarkdown;
+      default: return false;
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -77,7 +160,7 @@ export const DecoderGenerator = () => {
 
     setIsExtracting(true);
     setPollCount(0);
-    setStep("extracting");
+    goToStep(findIndexByStep("extracting"));
 
     try {
       const job = await uploadPdfFile(selectedFile);
@@ -92,7 +175,7 @@ export const DecoderGenerator = () => {
     } catch (error) {
       console.error("Upload error:", error);
       setIsExtracting(false);
-      setStep("upload_doc");
+      goToStep(findIndexByStep("upload_doc"));
       toast({
         title: "Upload failed",
         description: error instanceof Error ? error.message : "Could not upload PDF",
@@ -109,7 +192,7 @@ export const DecoderGenerator = () => {
       if (pollStartTimeRef.current && Date.now() - pollStartTimeRef.current > TIMEOUT_MS) {
         stopPolling();
         setIsExtracting(false);
-        setStep("upload_doc");
+        goToStep(findIndexByStep("upload_doc"));
         toast({
           title: "Extraction timeout",
           description: "The extraction took longer than expected",
@@ -132,7 +215,7 @@ export const DecoderGenerator = () => {
           stopPolling();
           setDocumentation(evidenceText);
           setIsExtracting(false);
-          setStep("view_doc");
+          goToStep(findIndexByStep("view_doc"), { markComplete: true });
           
           toast({
             title: "Extraction complete",
@@ -141,7 +224,7 @@ export const DecoderGenerator = () => {
         } else if (job.status === "Failed" || job.error) {
           stopPolling();
           setIsExtracting(false);
-          setStep("upload_doc");
+          goToStep(findIndexByStep("upload_doc"));
           toast({
             title: "Extraction failed",
             description: job.error || "Failed to extract document",
@@ -187,7 +270,7 @@ export const DecoderGenerator = () => {
     try {
       const result = await callDecoderGenAPI("GenerateCompositeSpec", { documentation });
       setCompositeSpec(result.compositeSpec);
-      setStep("step1_composite");
+      goToStep(findIndexByStep("step1_composite"), { markComplete: true });
       toast({
         title: "Step 1 complete",
         description: "Composite spec generated successfully",
@@ -212,7 +295,7 @@ export const DecoderGenerator = () => {
         compositeSpec,
       });
       setRulesBlock(result.rulesBlock);
-      setStep("step2_rules");
+      goToStep(findIndexByStep("step2_rules"), { markComplete: true });
       toast({
         title: "Step 2 complete",
         description: "Rules block generated successfully",
@@ -233,7 +316,7 @@ export const DecoderGenerator = () => {
     try {
       const result = await callDecoderGenAPI("ExtractExamplesTables", { documentation });
       setExamplesTablesMd(result.examplesTablesMd);
-      setStep("step3_examples");
+      goToStep(findIndexByStep("step3_examples"), { markComplete: true });
       toast({
         title: "Step 3 complete",
         description: "Examples tables extracted successfully",
@@ -258,7 +341,7 @@ export const DecoderGenerator = () => {
         compositeSpec,
       });
       setRulesBlock(result.rulesBlock);
-      setStep("step4_reconcile");
+      goToStep(findIndexByStep("step4_reconcile"), { markComplete: true });
       toast({
         title: "Step 4 complete",
         description: "Rules block reconciled successfully",
@@ -282,7 +365,7 @@ export const DecoderGenerator = () => {
         examplesTablesMd,
       });
       setDecoderCode(result.decoderCode);
-      setStep("step5_decoder");
+      goToStep(findIndexByStep("step5_decoder"), { markComplete: true });
       toast({
         title: "Step 5 complete",
         description: "Decoder code generated successfully",
@@ -307,7 +390,7 @@ export const DecoderGenerator = () => {
         decoderCode,
       });
       setDecoderCode(result.repairedCode);
-      setStep("step6_repair");
+      goToStep(findIndexByStep("step6_repair"), { markComplete: true });
       toast({
         title: "Step 6 complete",
         description: "Decoder repaired successfully",
@@ -332,7 +415,7 @@ export const DecoderGenerator = () => {
         decoderCode,
       });
       setFeedbackMarkdown(result.feedbackMarkdown);
-      setStep("step7_feedback");
+      goToStep(findIndexByStep("step7_feedback"), { markComplete: true });
       toast({
         title: "Step 7 complete",
         description: "Feedback generated successfully",
@@ -366,7 +449,9 @@ export const DecoderGenerator = () => {
 
   const resetWorkflow = () => {
     setManufacturer("");
-    setStep("select_manufacturer");
+    goToStep(0);
+    setCurrentIndex(0);
+    setFurthestCompletedIndex(0);
     setSelectedFile(null);
     setDocumentation("");
     setCompositeSpec("");
@@ -410,7 +495,7 @@ export const DecoderGenerator = () => {
             </div>
 
             <Button
-              onClick={() => setStep("upload_doc")}
+              onClick={() => goToStep(findIndexByStep("upload_doc"))}
               disabled={!manufacturer}
               className="w-full"
               data-testid="button-continue-manufacturer"
@@ -468,7 +553,7 @@ export const DecoderGenerator = () => {
                 Upload and Extract
               </Button>
               <Button
-                onClick={() => setStep("select_manufacturer")}
+                onClick={() => goToStep(findIndexByStep("select_manufacturer"))}
                 variant="outline"
                 data-testid="button-back"
               >
@@ -552,7 +637,7 @@ export const DecoderGenerator = () => {
                 Start Generation Process
               </Button>
               <Button
-                onClick={() => setStep("upload_doc")}
+                onClick={() => goToStep(findIndexByStep("upload_doc"))}
                 variant="outline"
                 data-testid="button-back-upload"
               >
@@ -567,7 +652,74 @@ export const DecoderGenerator = () => {
       {(step === "step1_composite" || step === "step2_rules" || step === "step3_examples" || 
         step === "step4_reconcile" || step === "step5_decoder" || step === "step6_repair" || 
         step === "step7_feedback") && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Progress Stepper */}
+          <Card className="glass-card">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {WORKFLOW_STEPS.slice(4, 11).map((stepName, idx) => {
+                    const stepIndex = idx + 4;
+                    const isActive = stepIndex === currentIndex;
+                    const isCompleted = stepIndex <= furthestCompletedIndex;
+                    const isClickable = stepIndex <= furthestCompletedIndex;
+                    
+                    return (
+                      <div key={stepName} className="flex items-center">
+                        <button
+                          onClick={() => isClickable && goToStep(stepIndex)}
+                          disabled={!isClickable || isProcessing}
+                          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                            isActive
+                              ? "bg-primary text-primary-foreground"
+                              : isCompleted
+                              ? "bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800"
+                              : "bg-muted text-muted-foreground cursor-not-allowed"
+                          }`}
+                          data-testid={`stepper-${stepName}`}
+                        >
+                          {idx === 6 ? <Check className="w-4 h-4" /> : idx + 1}
+                        </button>
+                        {idx < 6 && <ChevronRight className="w-4 h-4 mx-1 text-muted-foreground" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Navigation Buttons */}
+              <div className="flex gap-2 justify-between">
+                <Button
+                  onClick={goToPreviousStep}
+                  disabled={currentIndex <= 4 || isProcessing}
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-nav-previous"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Previous Step
+                </Button>
+                <div className="text-sm text-muted-foreground flex items-center">
+                  {STEP_TITLES[step]}
+                </div>
+                <Button
+                  onClick={goToNextStep}
+                  disabled={
+                    currentIndex >= 10 || 
+                    isProcessing || 
+                    currentIndex >= furthestCompletedIndex
+                  }
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-nav-next"
+                >
+                  Next Step
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Step 1: Composite Spec */}
           <Card className="glass-card" data-testid="card-step1">
             <CardHeader>
@@ -841,17 +993,74 @@ export const DecoderGenerator = () => {
           {step === "step7_feedback" && (
             <Card className="glass-card" data-testid="card-step7">
               <CardHeader>
-                <CardTitle>Step 7: Decoder Feedback</CardTitle>
+                <CardTitle>Step 7: Decoder Feedback & Iteration</CardTitle>
+                <CardDescription>
+                  Review the AI feedback below. You can iterate by adding your own notes and regenerating the decoder.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <ContentDisplay
-                  content={feedbackMarkdown}
-                  onChange={setFeedbackMarkdown}
-                  contentType="markdown"
-                  placeholder="Feedback will appear here after generation..."
-                  dataTestId="content-feedback"
-                />
-                <div className="flex gap-2">
+                <div>
+                  <Label className="text-sm font-semibold mb-2 block">AI-Generated Feedback:</Label>
+                  <ContentDisplay
+                    content={feedbackMarkdown}
+                    contentType="markdown"
+                    placeholder="Feedback will appear here after generation..."
+                    dataTestId="content-feedback"
+                    previewOnly
+                  />
+                </div>
+
+                <div className="border-t pt-4">
+                  <Label htmlFor="user-feedback-notes" className="text-sm font-semibold mb-2 block">
+                    Your Feedback Notes (Optional):
+                  </Label>
+                  <Textarea
+                    id="user-feedback-notes"
+                    value={sensorSpecificPrompt}
+                    onChange={(e) => setSensorSpecificPrompt(e.target.value)}
+                    placeholder="Add any specific requirements, corrections, or observations you'd like to incorporate..."
+                    className="min-h-[100px]"
+                    data-testid="textarea-user-feedback"
+                  />
+                </div>
+
+                <div className="bg-muted/50 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    <strong>Iterate on the decoder:</strong> Use the feedback loop to improve your decoder.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      onClick={() => {
+                        goToStep(findIndexByStep("step5_decoder"));
+                        toast({
+                          title: "Ready to Regenerate",
+                          description: "Review your decoder and click 'Regenerate' to apply feedback",
+                        });
+                      }}
+                      variant="default"
+                      data-testid="button-iterate-decoder"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Go Back to Step 5 (Regenerate Decoder)
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        goToStep(findIndexByStep("step6_repair"));
+                        toast({
+                          title: "Ready to Auto-Repair",
+                          description: "Review and click 'Auto-Repair' to fix issues",
+                        });
+                      }}
+                      variant="default"
+                      data-testid="button-iterate-repair"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Go Back to Step 6 (Auto-Repair)
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4 flex gap-2 flex-wrap">
                   <Button
                     onClick={() => copyToClipboard(feedbackMarkdown, "Feedback")}
                     variant="outline"
