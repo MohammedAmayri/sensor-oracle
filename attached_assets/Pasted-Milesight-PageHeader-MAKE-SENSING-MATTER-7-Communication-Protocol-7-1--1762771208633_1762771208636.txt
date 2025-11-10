@@ -1,0 +1,698 @@
+Milesight
+
+<!-- PageHeader="MAKE SENSING MATTER" -->
+
+
+# 7. Communication Protocol
+
+
+## 7.1 Uplink Data
+
+VS133 reports basic information of sensor whenever joining the network and the number of
+people periodically. For decoder examples please find files on
+https://github.com/Milesight-IoT/SensorDecoders.
+
+
+<table>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td rowspan="4">ff</td>
+<td>01 (Protocol Version)</td>
+<td>01=&gt; V1</td>
+</tr>
+<tr>
+<td>09 (Hardware Version)</td>
+<td>01 04 =&gt; V1.4</td>
+</tr>
+<tr>
+<td>16 (Device SN)</td>
+<td>16 digits</td>
+</tr>
+<tr>
+<td>1f (Software Version)</td>
+<td>85 01 00 05 =&gt; 133.1.0.5</td>
+</tr>
+<tr>
+<td>03</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 1 accumulated in counter, 4 bytes</td>
+</tr>
+<tr>
+<td>04</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 1 accumulated out counter, 4 bytes</td>
+</tr>
+<tr>
+<td>11</td>
+<td>d2 (Children accumulated counter)</td>
+<td>Line 1 accumulated in counter about children, 4 bytes</td>
+</tr>
+<tr>
+<td>12</td>
+<td>d2 (Children accumulated counter)</td>
+<td>Line 1 accumulated out counter about children, 4 bytes</td>
+</tr>
+<tr>
+<td>06</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 2 accumulated in counter, 4 bytes</td>
+</tr>
+<tr>
+<td>07</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 2 accumulated out counter, 4 bytes</td>
+</tr>
+<tr>
+<td>14</td>
+<td>d2 (Children Accumulated counter)</td>
+<td>Line 2 accumulated in counter about children, 4 bytes</td>
+</tr>
+<tr>
+<td>15</td>
+<td>d2 (Children Accumulated counter)</td>
+<td>Line 2 accumulated out counter about children, 4 bytes</td>
+</tr>
+<tr>
+<td>09</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 3 accumulated in counter, 4 bytes</td>
+</tr>
+<tr>
+<td>0a</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 3 accumulated out counter, 4 bytes</td>
+</tr>
+<tr>
+<td>17</td>
+<td>d2 (Children Accumulated counter)</td>
+<td>Line 3 accumulated in counter about children, 4 bytes</td>
+</tr>
+<tr>
+<td>18</td>
+<td>d2 (Children Accumulated counter)</td>
+<td>Line 3 accumulated out counter about children, 4 bytes</td>
+</tr>
+<tr>
+<td>0c</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 4 accumulated in counter, 4 bytes</td>
+</tr>
+<tr>
+<td>0d</td>
+<td>d2 (Accumulated counter)</td>
+<td>Line 4 accumulated out counter, 4 bytes</td>
+</tr>
+<tr>
+<td>1a</td>
+<td>d2 (Children Accumulated counter)</td>
+<td>Line 4 accumulated in counter about children, 4 bytes</td>
+</tr>
+<tr>
+<td>1b</td>
+<td>d2 (Children Accumulated</td>
+<td>Line 4 accumulated out counter about children,</td>
+</tr>
+</table>
+
+
+<!-- PageNumber="38" -->
+<!-- PageBreak -->
+
+<!-- PageHeader="Milesight" -->
+<!-- PageHeader="MAKE SENSING MATTER" -->
+
+
+<table>
+<tr>
+<th></th>
+<th>counter)</th>
+<th>4 bytes</th>
+</tr>
+<tr>
+<td rowspan="4">0f</td>
+<td rowspan="4">e3 (Region Monitoring)</td>
+<td>Byte 1: number of people in region 1</td>
+</tr>
+<tr>
+<td>Byte 2: number of people in region 2</td>
+</tr>
+<tr>
+<td>Byte 3: number of people in region 3</td>
+</tr>
+<tr>
+<td>Byte 4: number of people in region 4</td>
+</tr>
+<tr>
+<td rowspan="4">1d</td>
+<td rowspan="4">e3 (Children Region Monitoring)</td>
+<td>Byte 1: number of children in region 1</td>
+</tr>
+<tr>
+<td>Byte 2: number of children in region 2</td>
+</tr>
+<tr>
+<td>Byte 3: number of children in region 3</td>
+</tr>
+<tr>
+<td>Byte 4: number of children in region 4</td>
+</tr>
+<tr>
+<td rowspan="3">10</td>
+<td rowspan="3">e4 (Region Monitoring)</td>
+<td>Byte 1: region ID</td>
+</tr>
+<tr>
+<td>Byte 2-3: avg. dwell time</td>
+</tr>
+<tr>
+<td>Byte 4-5: max. dwell time</td>
+</tr>
+<tr>
+<td rowspan="3">1e</td>
+<td rowspan="3">e4 (Children Region Monitoring)</td>
+<td>Byte 1: region ID</td>
+</tr>
+<tr>
+<td>Byte 2-3: avg. dwell time</td>
+</tr>
+<tr>
+<td>Byte 4-5: max. dwell time</td>
+</tr>
+<tr>
+<td rowspan="2">05</td>
+<td rowspan="2">cc (Periodic counter)</td>
+<td>Line 1:</td>
+</tr>
+<tr>
+<td>Byte 1-2: in counter during the report interval Byte 3-4: out counter during the report interval</td>
+</tr>
+<tr>
+<td rowspan="2">13</td>
+<td rowspan="2">cc (Children Periodic counter)</td>
+<td>Line 2:</td>
+</tr>
+<tr>
+<td>Byte 1-2: in counter during the report interval Byte 3-4: out counter during the report interval</td>
+</tr>
+<tr>
+<td rowspan="3">08</td>
+<td rowspan="3">cc (Periodic counter)</td>
+<td>Line 2:</td>
+</tr>
+<tr>
+<td>Byte 1-2: in counter during the report interval</td>
+</tr>
+<tr>
+<td>Byte 3-4: out counter during the report interval</td>
+</tr>
+<tr>
+<td rowspan="2">16</td>
+<td rowspan="2">cc (Children Periodic counter)</td>
+<td>Line 2:</td>
+</tr>
+<tr>
+<td>Byte 1-2: in counter during the report interval Byte 3-4: out counter during the report interval</td>
+</tr>
+<tr>
+<td rowspan="3">0b</td>
+<td rowspan="3">cc (Periodic Counter)</td>
+<td>Line 3:</td>
+</tr>
+<tr>
+<td>Byte 1-2: in counter during the report interval</td>
+</tr>
+<tr>
+<td>Byte 3-4: out counter during the report interval</td>
+</tr>
+<tr>
+<td rowspan="3">19</td>
+<td rowspan="3">cc (Children Periodic counter)</td>
+<td>Line 3:</td>
+</tr>
+<tr>
+<td>Byte 1-2: in counter during the report interval</td>
+</tr>
+<tr>
+<td>Byte 3-4: out counter during the report interval</td>
+</tr>
+<tr>
+<td>0e</td>
+<td>cc (Periodic Counter)</td>
+<td>Line 4:</td>
+</tr>
+</table>
+
+
+<!-- PageNumber="39" -->
+<!-- PageBreak -->
+
+<!-- PageHeader="Milesight" -->
+<!-- PageHeader="MAKE SENSING MATTER" -->
+
+
+<table>
+<tr>
+<th></th>
+<th></th>
+<th>Byte 1-2: in counter during the report interval Byte 3-4: out counter during the report interval</th>
+</tr>
+<tr>
+<td>1c</td>
+<td>cc (Children Periodic counter)</td>
+<td>Line 4: Byte 1-2: in counter during the report interval Byte 3-4: out counter during the report interval</td>
+</tr>
+<tr>
+<td>50</td>
+<td>fc (Alarm)</td>
+<td>Byte 1: 01: Occlusion Detection Alarm Byte 2: ID, 00: This Device, 01~0f: Node device Byte 3: 01: Alarm; 00: Release</td>
+</tr>
+</table>
+
+Note: If children distinction feature or staff detection feature is enabled, the counter uplinks will
+minus children and staff. For example, if children distinction is enabled, the accumulated in
+counter=total in counter-children in, the accumulated out counter=total out counter-children out.
+Example:
+
+
+1\. Device information.
+
+
+<table>
+<tr>
+<th colspan="6">ff0101 ff166600b09409760000 ff090102 ff1f85010001</th>
+</tr>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+<tr>
+<td>ff</td>
+<td>01 (Protocol Version)</td>
+<td>01 (V1)</td>
+<td>ff</td>
+<td>16(Device SN)</td>
+<td>66 00 b0 94 09 76 00 00</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>ff</td>
+<td>09 (Hardware version)</td>
+<td>0102 (V1.2)</td>
+<td>ff</td>
+<td>1f (Software version)</td>
+<td>85 01 00 01 (V133.1.0.1)</td>
+</tr>
+</table>
+
+
+### 2. Period report.
+
+03d205000000 04d203000000 11d245030000 12d2cb010000 06d249050000
+07d246030000 14d246030000 15d2c9010000 09d200000000 0ad200000000
+17d200000000 18d200000000 0cd200000000 0dd200000000 1ad200000000
+1bd200000000 0fe300000000 1de300000000 10e4012a005a00
+
+
+<table>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+<tr>
+<td>03</td>
+<td>d2 (accumulated in counter)</td>
+<td>05 00 00 00 =&gt; 00 00 00 05=5</td>
+<td>04</td>
+<td>d2 (accumulated out counter)</td>
+<td>03 00 00 00 =&gt; 00 00 00 03=3</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>11</td>
+<td>d2 (Children accumulated counter)</td>
+<td>45 03 00 00=&gt;00 00 03 45=837</td>
+<td>12</td>
+<td>d2 (Children accumulated counter)</td>
+<td>cb010000=&gt;0000 01cb=459</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>06</td>
+<td>d2 (Accumulated counter)</td>
+<td>49 05 00 00=&gt;00 00 05 49=1353</td>
+<td>07</td>
+<td>d2 (Accumulated counter)</td>
+<td>46030000=&gt;0000 0346=838</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+</table>
+
+
+<!-- PageNumber="40" -->
+<!-- PageBreak -->
+
+<!-- PageHeader="Milesight" -->
+<!-- PageHeader="MAKE SENSING MATTER" -->
+
+
+<table>
+<tr>
+<th>14</th>
+<th>d2 (Children accumulated counter)</th>
+<th>46030000=&gt;0 0000346=838</th>
+<th>15</th>
+<th>d2 (Children accumulated counter)</th>
+<th>c9010000=&gt;0000 01c9=457</th>
+</tr>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+<tr>
+<td>09</td>
+<td>d2 (Accumulated counter)</td>
+<td>00000000=&gt;0</td>
+<td>0a</td>
+<td>d2 (Accumulated counter)</td>
+<td>00000000=&gt;0</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>17</td>
+<td>d2 (Children accumulated counter)</td>
+<td>00000000=&gt;0</td>
+<td>18</td>
+<td>d2 (Children accumulated counter)</td>
+<td>00000000=&gt;0</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>0c</td>
+<td>d2 (Accumulated counter)</td>
+<td>00000000=&gt;0</td>
+<td>0d</td>
+<td>d2 (Accumulated counter)</td>
+<td>00000000=&gt;0</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>1a</td>
+<td>d2 (Children accumulated counter)</td>
+<td>00000000=&gt;0</td>
+<td>1b</td>
+<td>d2 (Children accumulated counter)</td>
+<td>00000000=&gt;0</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>0f</td>
+<td>e3 (Region Monitoring)</td>
+<td>00000000=&gt;0</td>
+<td>1d</td>
+<td>e3 (Children Region Monitoring)</td>
+<td>00000000=&gt;0</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>10</td>
+<td>e4 (Region Monitoring)</td>
+<td>00000000=&gt;0</td>
+<td>1e</td>
+<td>e4 (Children Region Monitoring)</td>
+<td>01=region 1 avg. dwell time: 2a00=&gt;002a=42s max. dwell time: 5a00=&gt;005a =90s</td>
+</tr>
+</table>
+
+
+### 3. Period Report: Enable Children Distinction.
+
+13cc05000000 08cc03000000 16cc02000000 0bcc05000000 19cc03000000
+0ecc04000000 1ccc05000000
+
+
+<table>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+<tr>
+<td>13</td>
+<td>cc (Children Periodic counter)</td>
+<td>05 00 00 00 =&gt; 00 00 00 05=5</td>
+<td>08</td>
+<td>cc (Children Periodic counter)</td>
+<td>03 00 00 00 =&gt; 00 00 00 03=3</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+<tr>
+<td>16</td>
+<td>cc (Children Periodic counter)</td>
+<td>02 00 00 00 =&gt; 00 00 00 05=2</td>
+<td>0b</td>
+<td>cc (Children Periodic counter)</td>
+<td>05 00 00 00 =&gt; 00 00 00 05=5</td>
+</tr>
+<tr>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+<td>Channel</td>
+<td>Type</td>
+<td>Value</td>
+</tr>
+</table>
+
+
+<!-- PageNumber="41" -->
+<!-- PageBreak -->
+
+<!-- PageHeader="Milesight" -->
+<!-- PageHeader="MAKE SENSING MATTER" -->
+
+
+<table>
+<tr>
+<td rowspan="2">19</td>
+<td rowspan="2">cc (Children Periodic counter)</td>
+<td>03 00 00 00 =&gt;</td>
+<td rowspan="2">0e</td>
+<td>cc (Children</td>
+<td>04 00 00 00</td>
+</tr>
+<tr>
+<td>00 00 00 05=3</td>
+<td>Periodic counter)</td>
+<td>=&gt; 00 00 00 05=4</td>
+</tr>
+</table>
+
+
+<table>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+<tr>
+<td>1c</td>
+<td>cc (Children Periodic counter)</td>
+<td>05 00 00 00 =&gt; 00 00 00 05=5</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</table>
+
+
+### 4. Occlusion Detection Alarm.
+
+
+<table>
+<tr>
+<th colspan="3">50fc 010001</th>
+</tr>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+<tr>
+<td>50</td>
+<td>fc (Alarm)</td>
+<td>01 =&gt; Occlusion Detection Alarm 00 =&gt; This Device 01 =&gt; Alarm</td>
+</tr>
+</table>
+
+
+## 7.2 Downlink Command
+
+VS133 supports to configure the device via downlink commands. Application port is 85 by
+default.
+
+
+<table>
+<tr>
+<th>Channel</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td rowspan="17">ff</td>
+<td>10 (Reboot)</td>
+<td>ff (Reserved)</td>
+</tr>
+<tr>
+<td>11 (System time)</td>
+<td>4 Bytes, Unix Timestamp</td>
+</tr>
+<tr>
+<td>04 (Confirm Mode)</td>
+<td>00: disable, 01: enable</td>
+</tr>
+<tr>
+<td></td>
+<td>Byte 1: Channel index range</td>
+</tr>
+<tr>
+<td rowspan="3"></td>
+<td>01: 0-15</td>
+</tr>
+<tr>
+<td>02: 16-31</td>
+</tr>
+<tr>
+<td>03: 32-47</td>
+</tr>
+<tr>
+<td rowspan="5">05 (LoRaWAN® Channel Mask)</td>
+<td>04: 48-63</td>
+</tr>
+<tr>
+<td>05: 64-79</td>
+</tr>
+<tr>
+<td>06: 80-95</td>
+</tr>
+<tr>
+<td>Byte 2-3: indicate disable or enable via</td>
+</tr>
+<tr>
+<td>every bit, 0=disable, 1=enable</td>
+</tr>
+<tr>
+<td>40 (ADR)</td>
+<td>00: disable, 01: enable</td>
+</tr>
+<tr>
+<td>41 (Application Port)</td>
+<td>1 Byte, default is 85</td>
+</tr>
+<tr>
+<td>42 (Wi-Fi)</td>
+<td>00: disable, 01: enable</td>
+</tr>
+<tr>
+<td>43 (People Counting Periodic Report)</td>
+<td>00: disable, 01: enable</td>
+</tr>
+<tr>
+<td>44 (People Counting Trigger Report)</td>
+<td>00: disable, 01: enable</td>
+</tr>
+</table>
+
+
+<!-- PageNumber="42" -->
