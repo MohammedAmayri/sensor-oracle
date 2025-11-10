@@ -1,0 +1,38 @@
+# DECODING RULES (Milesight Ultrasonic Sensor)
+# - Payload = repeating [channel][type][data…].
+# - Channels used for device identity/join/version belong to BasicInformation; channels used for measurements belong to SensorData.
+# - Apply sizes exactly; skip tuples not listed. If repeated, last wins.
+# - Default little-endian for multi-byte numeric data unless the doc or examples imply otherwise.
+# - Normalize input: strip whitespace, commas, and hex prefixes including "0x" or OCR "ox"; require even-length hex.
+# - channel and type hex MUST be lowercase (e.g., ff, 09, 0a).
+# - MAP / BIT lines must include ALL fields with NON-EMPTY values.
+# - If identity scaling: use scale=1 (never "/1"). If no unit in doc: unit=none (never blank).
+# - Do NOT emit any EX / example / SELF-CHECK lines in this response.
+
+# ===== BASIC INFORMATION (channel(s) for join / identity / version) =====
+MAP: channel=ff type=01 offset=0 size=1 signed=unsigned endian=n/a scale=ver:major name=ProtocolVersion unit=none
+MAP: channel=ff type=09 offset=0 size=2 signed=unsigned endian=be scale=ver:bcd name=HardwareVersion unit=none
+MAP: channel=ff type=0a offset=0 size=2 signed=unsigned endian=be scale=ver:bcd name=SoftwareVersion unit=none
+MAP: channel=ff type=0b offset=0 size=0 signed=n/a endian=n/a scale=1 name=PowerOn unit=none
+MAP: channel=ff type=0f offset=0 size=1 signed=unsigned endian=n/a scale=1 name=DeviceType unit=none
+MAP: channel=ff type=16 offset=0 size=8 signed=unsigned endian=n/a scale=1 name=DeviceSn unit=none
+
+# ===== SENSOR DATA =====
+MAP: channel=01 type=75 offset=0 size=1 signed=unsigned endian=n/a scale=1 name=BatteryLevel unit=%
+MAP: channel=03 type=67 offset=0 size=2 signed=signed endian=le scale=/10 name=Temperature unit=°C
+MAP: channel=04 type=82 offset=0 size=2 signed=signed endian=le scale=1 name=Distance unit=mm
+MAP: channel=05 type=00 offset=0 size=1 signed=unsigned endian=n/a scale=1 name=DevicePosition unit=none
+MAP: channel=83 type=67 offset=0 size=2 signed=signed endian=le scale=/10 name=Temperature unit=°C
+MAP: channel=83 type=67 offset=2 size=1 signed=unsigned endian=n/a scale=1 name=AlarmStatus unit=none
+MAP: channel=84 type=82 offset=0 size=2 signed=signed endian=le scale=1 name=Distance unit=mm
+MAP: channel=84 type=82 offset=2 size=1 signed=unsigned endian=n/a scale=1 name=AlarmStatus unit=none
+
+# ===== BITFIELDS (optional, for bytes that contain multiple flags) =====
+
+# ===== LOOKUPS / RENDERING (only if present in doc or clearly implied by examples) =====
+LOOKUP: DeviceType 00="Class A", 01="Class B", 02="Class C"
+LOOKUP: AlarmStatus 00="Alarm dismiss", 01="Alarm"
+LOOKUP: DevicePosition 00="Normal", 01="Tilt"
+RENDER: ProtocolVersion as "V{major}"
+RENDER: HardwareVersion as "V{major}.{minor}"
+RENDER: SoftwareVersion as "V{major}.{minor}"
