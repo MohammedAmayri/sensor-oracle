@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Upload, FileText, Copy, Check, ArrowRight, Code2, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { uploadPdfFile, getJob, loadEvidenceWithRefresh, type JobResponse } from "@/lib/azureDocumentIntelligence";
 
 type Manufacturer = "milesight" | "decentlab" | "dragino" | "watteco" | "enginko";
 
@@ -46,9 +47,9 @@ export const DecoderGenerator = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingIntervalRef = useRef<number | null>(null);
   const pollStartTimeRef = useRef<number | null>(null);
+  
+  const [jobId, setJobId] = useState<string>("");
 
-  const FUNC_BASE = import.meta.env.VITE_FUNC_BASE;
-  const FUNC_KEY = import.meta.env.VITE_FUNC_KEY;
   const DECODERGEN_BASE = import.meta.env.VITE_DECODERGEN_BASE;
   const DECODERGEN_KEY = import.meta.env.VITE_DECODERGEN_KEY;
 
@@ -75,25 +76,15 @@ export const DecoderGenerator = () => {
     setStep("extracting");
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const response = await fetch(`${FUNC_BASE}/api/UploadPDF?code=${FUNC_KEY}`, {
-        method: "POST",
-        body: formData,
+      const job = await uploadPdfFile(selectedFile);
+      setJobId(job.id);
+      
+      toast({
+        title: "Upload successful",
+        description: "PDF uploaded, starting extraction...",
       });
 
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.id) {
-        startPollingForExtraction(data.id);
-      } else {
-        throw new Error("No job ID returned from upload");
-      }
+      startPollingForExtraction(job.id);
     } catch (error) {
       console.error("Upload error:", error);
       setIsExtracting(false);
@@ -106,7 +97,7 @@ export const DecoderGenerator = () => {
     }
   };
 
-  const startPollingForExtraction = (jobId: string) => {
+  const startPollingForExtraction = (extractJobId: string) => {
     pollStartTimeRef.current = Date.now();
     const TIMEOUT_MS = 300000; // 5 minutes
 
@@ -126,18 +117,13 @@ export const DecoderGenerator = () => {
       setPollCount(prev => prev + 1);
       
       try {
-        const response = await fetch(`${FUNC_BASE}/api/GetJob/${jobId}?code=${FUNC_KEY}`);
-        
-        if (!response.ok) {
-          throw new Error("Failed to check job status");
-        }
+        const job = await getJob(extractJobId);
 
-        const job = await response.json();
+        const hasEvidence = job.evidenceReadUrl || job.evidenceMdUrl || job.evidenceTxtUrl;
 
-        if (job.evidenceReadUrl) {
+        if (hasEvidence) {
           // Extraction complete - fetch the evidence
-          const evidenceResponse = await fetch(job.evidenceReadUrl);
-          const evidenceText = await evidenceResponse.text();
+          const evidenceText = await loadEvidenceWithRefresh(job);
           
           stopPolling();
           setDocumentation(evidenceText);
