@@ -8,6 +8,9 @@ import { Loader2, Upload, FileText, Copy, Check, ArrowRight, Code2, RefreshCw } 
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { uploadPdfFile, getJob, loadEvidenceWithRefresh, type JobResponse } from "@/lib/azureDocumentIntelligence";
+import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
+import rehypeSanitize from "rehype-sanitize";
 
 type Manufacturer = "milesight" | "decentlab" | "dragino" | "watteco" | "enginko";
 
@@ -524,9 +527,12 @@ export const DecoderGenerator = () => {
               <TabsContent value="preview" className="space-y-2">
                 <div 
                   className="min-h-[500px] p-4 border rounded-md bg-background prose prose-sm dark:prose-invert max-w-none overflow-auto"
-                  dangerouslySetInnerHTML={{ __html: documentation.replace(/\n/g, '<br>') }}
                   data-testid="preview-documentation"
-                />
+                >
+                  <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+                    {documentation}
+                  </ReactMarkdown>
+                </div>
               </TabsContent>
             </Tabs>
 

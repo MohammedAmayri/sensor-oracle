@@ -122,6 +122,12 @@ src/
   - Accessed via `import.meta.env.VITE_FUNC_BASE` and `import.meta.env.VITE_FUNC_KEY` in frontend
 
 ## Recent Changes
+- **2025-11-10:** Fixed markdown preview in Decoder Generator
+  - Implemented proper markdown-to-HTML rendering using react-markdown
+  - HTML Preview tab now shows rendered markdown (tables, formatting, etc.)
+  - Added rehype-raw and rehype-sanitize for safe HTML rendering
+  - Side-by-side viewer now works like markdownlivepreview.com
+
 - **2025-11-10:** Fixed PDF upload and created shared Azure utilities
   - Created `src/lib/azureDocumentIntelligence.ts` shared utility module
   - Refactored DecoderGenerator to use shared utilities (fixes PDF upload issue)
