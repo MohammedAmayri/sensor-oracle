@@ -123,9 +123,31 @@ src/
 - **Environment Variables (Secrets)**:
   - `FUNC_BASE`: Azure Functions base URL (e.g., https://your-app.azurewebsites.net)
   - `FUNC_KEY`: Azure Functions authentication key
-  - Accessed via `import.meta.env.VITE_FUNC_BASE` and `import.meta.env.VITE_FUNC_KEY` in frontend
+  - **Manufacturer-specific Decoder Generator credentials**:
+    - `VITE_MILESIGHT_BASE` & `VITE_MILESIGHT_KEY`: Milesight Azure Functions endpoint
+    - `VITE_DECENTLAB_BASE` & `VITE_DECENTLAB_KEY`: Decentlab Azure Functions endpoint
+    - `VITE_DRAGINO_BASE` & `VITE_DRAGINO_KEY`: Dragino Azure Functions endpoint
+  - Accessed via `import.meta.env.VITE_*` in frontend
 
 ## Recent Changes
+- **2025-11-10:** Added Dragino manufacturer support to Decoder Generator
+  - Enabled Dragino option in manufacturer dropdown
+  - Implemented streamlined 2-step Dragino workflow:
+    - Step 1: Generate Dragino Rules (`/api/GenerateDraginoRules`) - generates rules from documentation
+    - Step 2: Generate Dragino Decoder (`/api/GenerateDraginoDecoder`) - generates C# decoder from rules
+  - Simplest workflow compared to Milesight (7 steps) and Decentlab (4 steps)
+  - Dragino skips: Composite Spec, Examples Tables, Reconcile, Auto-Repair, and Feedback steps
+  - Manufacturer-specific API credentials (`VITE_DRAGINO_BASE`, `VITE_DRAGINO_KEY`)
+  - Conditional UI rendering hides irrelevant steps for Dragino
+  - Direct flow: Documentation → Rules → Decoder
+  - Reuses existing UI infrastructure and ContentDisplay component
+
+- **2025-11-10:** Refactored to manufacturer-specific environment variables
+  - Replaced generic `VITE_DECODERGEN_BASE/KEY` with manufacturer-specific credentials
+  - Each manufacturer (Milesight, Decentlab, Dragino) now has separate Azure Functions endpoints
+  - Improved security and flexibility for multi-backend architecture
+  - Updated `getApiCredentials()` function to route API calls to correct endpoints
+
 - **2025-11-10:** Added Decentlab manufacturer support to Decoder Generator
   - Enabled Decentlab option in manufacturer dropdown
   - Implemented 6 Decentlab-specific API endpoints:
@@ -179,20 +201,16 @@ src/
   - All components now use CreateJobAndUpload endpoint with proper headers
 
 - **2025-11-10:** Added Decoder Generator feature (4th tab)
-  - Manufacturer-based decoder generation workflow (Milesight, DecentLab, Dragino, Watteco, Enginko)
-  - Implemented Milesight workflow with 7-step process:
-    1. GenerateCompositeSpec - Discover TLVs and bitfields
-    2. GenerateRulesBlock - Generate initial decoding rules
-    3. ExtractExamplesTables - Extract example tables from documentation
-    4. ReconcileRulesBlock - Reconcile rules with examples
-    5. GenerateDecoder - Generate C# decoder code
-    6. AutoRepairDecoder - Auto-repair decoder issues
-    7. DecoderFeedback - Get feedback and patch suggestions
-  - Integrated with Azure Functions (DECODERGEN_BASE, DECODERGEN_KEY)
+  - Manufacturer-based decoder generation workflow supporting:
+    - **Milesight** (7-step process): Composite Spec → Rules → Examples → Reconcile → Decoder → Auto-Repair → Feedback
+    - **Decentlab** (4-step process): Rules → Examples → Decoder → Feedback (with optional refinement)
+    - **Dragino** (2-step process): Rules → Decoder
+    - Watteco, Enginko (coming soon)
+  - Integrated with manufacturer-specific Azure Functions endpoints
   - PDF upload with Azure Document Intelligence extraction
   - Side-by-side markdown/HTML viewer for documentation review
   - Step-by-step UI with editable intermediate results
-  - Added VITE_DECODERGEN_BASE and VITE_DECODERGEN_KEY environment variables
+  - Conditional rendering shows only relevant steps per manufacturer
 
 - **2025-10-29:** Added PDF Decoder Generator feature
   - Implemented complete 3-step workflow for PDF → Evidence → Generate → Download
