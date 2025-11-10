@@ -33,6 +33,10 @@ src/
     DeviceModelFinder.tsx     # IoT device model search component
     ModelDBInsertion.tsx      # Database insertion component
     PdfDecoderGenerator.tsx   # PDF decoder generation workflow
+    DecoderGenerator.tsx      # Manufacturer-specific decoder generation workflow
+    ContentDisplay.tsx        # Universal content viewer/editor with syntax highlighting
+  lib/
+    azureDocumentIntelligence.ts  # Shared Azure Functions utilities
   pages/
     Index.tsx                 # Main page with tabs for all features
     NotFound.tsx              # 404 page
@@ -122,6 +126,26 @@ src/
   - Accessed via `import.meta.env.VITE_FUNC_BASE` and `import.meta.env.VITE_FUNC_KEY` in frontend
 
 ## Recent Changes
+- **2025-11-10:** Enhanced content display across all workflow steps
+  - Created `ContentDisplay` component for unified viewing/editing of different content types
+  - Features:
+    - Syntax highlighting for C# code using react-syntax-highlighter
+    - Markdown rendering with proper table formatting using react-markdown
+    - Structured rules display with monospace formatting
+    - Preview/Edit toggle for all editable content
+    - Empty state placeholders
+    - Page-level scrolling (removed internal textarea scrolling)
+  - Integrated into all 7 Decoder Generator workflow steps:
+    - Step 1 (Composite Spec): rules format
+    - Step 2 (Rules Block): rules format
+    - Step 3 (Examples Tables): markdown with table rendering
+    - Step 4 (Reconciled Rules): rules format
+    - Step 5 (Decoder Code): C# syntax highlighting
+    - Step 6 (Auto-Repaired Code): C# syntax highlighting
+    - Step 7 (Feedback): markdown rendering
+  - Explicit content types per step for reliable formatting
+  - Improved visual clarity and professional presentation
+
 - **2025-11-10:** Fixed markdown preview in Decoder Generator
   - Implemented proper markdown-to-HTML rendering using react-markdown
   - HTML Preview tab now shows rendered markdown (tables, formatting, etc.)
