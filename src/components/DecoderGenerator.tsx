@@ -93,6 +93,8 @@ export const DecoderGenerator = () => {
   const MILESIGHT_KEY = import.meta.env.VITE_MILESIGHT_KEY;
   const DECENTLAB_BASE = import.meta.env.VITE_DECENTLAB_BASE;
   const DECENTLAB_KEY = import.meta.env.VITE_DECENTLAB_KEY;
+  const DRAGINO_BASE = import.meta.env.VITE_DRAGINO_BASE;
+  const DRAGINO_KEY = import.meta.env.VITE_DRAGINO_KEY;
 
   // Get the appropriate base URL and key based on manufacturer
   const getApiCredentials = () => {
@@ -100,6 +102,8 @@ export const DecoderGenerator = () => {
       return { base: MILESIGHT_BASE, key: MILESIGHT_KEY };
     } else if (manufacturer === "decentlab") {
       return { base: DECENTLAB_BASE, key: DECENTLAB_KEY };
+    } else if (manufacturer === "dragino") {
+      return { base: DRAGINO_BASE, key: DRAGINO_KEY };
     }
     return { base: "", key: "" };
   };
@@ -599,6 +603,54 @@ export const DecoderGenerator = () => {
     }
   };
 
+  // Dragino workflow functions
+  const runDraginoStep1GenerateRules = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("GenerateDraginoRules", {
+        documentation,
+        sensorSpecificPrompt: sensorSpecificPrompt || undefined,
+      });
+      setRulesBlock(result.rulesBlock);
+      goToStep(findIndexByStep("step2_rules"), { markComplete: true });
+      toast({
+        title: "Step 1 complete",
+        description: "Dragino rules generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 1 failed",
+        description: error instanceof Error ? error.message : "Could not generate Dragino rules",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const runDraginoStep2GenerateDecoder = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("GenerateDraginoDecoder", {
+        rulesBlock,
+      });
+      setDecoderCode(result.decoderCode);
+      goToStep(findIndexByStep("step5_decoder"), { markComplete: true });
+      toast({
+        title: "Step 2 complete",
+        description: "Dragino decoder generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 2 failed",
+        description: error instanceof Error ? error.message : "Could not generate Dragino decoder",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -655,7 +707,7 @@ export const DecoderGenerator = () => {
                 <SelectContent>
                   <SelectItem value="milesight">Milesight</SelectItem>
                   <SelectItem value="decentlab">DecentLab</SelectItem>
-                  <SelectItem value="dragino" disabled>Dragino (Coming Soon)</SelectItem>
+                  <SelectItem value="dragino">Dragino</SelectItem>
                   <SelectItem value="watteco" disabled>Watteco (Coming Soon)</SelectItem>
                   <SelectItem value="enginko" disabled>Enginko (Coming Soon)</SelectItem>
                 </SelectContent>
@@ -792,7 +844,13 @@ export const DecoderGenerator = () => {
 
             <div className="flex gap-2">
               <Button
-                onClick={manufacturer === "decentlab" ? runDecentlabStep1GenerateRules : runStep1GenerateCompositeSpec}
+                onClick={
+                  manufacturer === "decentlab" 
+                    ? runDecentlabStep1GenerateRules 
+                    : manufacturer === "dragino"
+                      ? runDraginoStep1GenerateRules
+                      : runStep1GenerateCompositeSpec
+                }
                 disabled={isProcessing}
                 className="flex-1"
                 data-testid="button-start-generation"
@@ -802,7 +860,11 @@ export const DecoderGenerator = () => {
                 ) : (
                   <Code2 className="w-4 h-4 mr-2" />
                 )}
-                {manufacturer === "decentlab" ? "Start Decentlab Generation" : "Start Generation Process"}
+                {manufacturer === "decentlab" 
+                  ? "Start Decentlab Generation" 
+                  : manufacturer === "dragino"
+                    ? "Start Dragino Generation"
+                    : "Start Generation Process"}
               </Button>
               <Button
                 onClick={() => goToStep(findIndexByStep("upload_doc"))}
@@ -980,12 +1042,18 @@ export const DecoderGenerator = () => {
                       </Button>
                     )}
                     <Button
-                      onClick={manufacturer === "decentlab" ? runDecentlabStep3ExtractExamples : runStep3ExtractExamplesTables}
+                      onClick={
+                        manufacturer === "decentlab" 
+                          ? runDecentlabStep3ExtractExamples 
+                          : manufacturer === "dragino"
+                            ? runDraginoStep2GenerateDecoder
+                            : runStep3ExtractExamplesTables
+                      }
                       disabled={isProcessing}
                       data-testid="button-next-step3"
                     >
                       {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                      Next: Extract Examples
+                      {manufacturer === "dragino" ? "Next: Generate Decoder" : "Next: Extract Examples"}
                     </Button>
                   </div>
                 </CardContent>
@@ -993,8 +1061,8 @@ export const DecoderGenerator = () => {
             </Card>
           )}
 
-          {/* Step 3: Examples Tables */}
-          {(step === "step3_examples" || step === "step4_reconcile" || step === "step5_decoder" || 
+          {/* Step 3: Examples Tables (not for Dragino) */}
+          {manufacturer !== "dragino" && (step === "step3_examples" || step === "step4_reconcile" || step === "step5_decoder" || 
             step === "step6_repair" || step === "step7_feedback") && (
             <Card className="glass-card" data-testid="card-step3">
               <CardHeader>
