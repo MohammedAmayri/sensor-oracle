@@ -126,6 +126,25 @@ src/
   - Accessed via `import.meta.env.VITE_FUNC_BASE` and `import.meta.env.VITE_FUNC_KEY` in frontend
 
 ## Recent Changes
+- **2025-11-10:** Added Decentlab manufacturer support to Decoder Generator
+  - Enabled Decentlab option in manufacturer dropdown
+  - Implemented 6 Decentlab-specific API endpoints:
+    - Generate Rules (`/decentlab/rules/generate`)
+    - Refine Rules (`/decentlab/rules/refine`)
+    - Extract Examples (`/decentlab/examples/extract`)
+    - Generate Decoder (`/decentlab/decoder/generate`)
+    - Static Feedback (`/decentlab/decoder/feedback`)
+    - Refine Decoder (`/decentlab/decoder/refine`)
+  - Streamlined 4-step Decentlab workflow (vs 7 steps for Milesight):
+    - Step 1: Generate Rules (with optional Refine Rules button)
+    - Step 2: Extract Examples
+    - Step 3: Generate Decoder
+    - Step 4: Static Feedback (with optional Refine Decoder button)
+  - Conditionally hides Milesight-specific steps (Composite Spec, Reconcile, Auto-Repair)
+  - Decentlab feedback loop allows iterating on rules or decoder with user feedback
+  - Reuses existing navigation system, ContentDisplay component, and Azure integration
+  - Both manufacturers work seamlessly with same UI infrastructure
+
 - **2025-11-10:** Enhanced content display across all workflow steps
   - Created `ContentDisplay` component for unified viewing/editing of different content types
   - Features:
