@@ -2,7 +2,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DeviceModelFinder } from "@/components/DeviceModelFinder";
 import { ModelDBInsertion } from "@/components/ModelDBInsertion";
 import { PdfDecoderGenerator } from "@/components/PdfDecoderGenerator";
-import { Brain, Database, Menu, FileCode } from "lucide-react";
+import { DecoderGenerator } from "@/components/DecoderGenerator";
+import { Brain, Database, Menu, FileCode, Factory } from "lucide-react";
 
 const Index = () => {
   return (
@@ -30,7 +31,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="finder" className="max-w-6xl mx-auto">
-          <TabsList className="glass-card grid w-full grid-cols-3 mb-8 p-1 h-auto rounded-lg">
+          <TabsList className="glass-card grid w-full grid-cols-4 mb-8 p-1 h-auto rounded-lg">
             <TabsTrigger 
               value="finder" 
               className="gap-2 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
@@ -52,6 +53,13 @@ const Index = () => {
               <FileCode className="w-4 h-4" />
               <span className="font-medium">PDF Decoder Generator</span>
             </TabsTrigger>
+            <TabsTrigger 
+              value="decodergen" 
+              className="gap-2 py-3 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200"
+            >
+              <Factory className="w-4 h-4" />
+              <span className="font-medium">Decoder Generator</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="finder" className="space-y-6 animate-in fade-in-50 duration-300">
@@ -64,6 +72,10 @@ const Index = () => {
 
           <TabsContent value="decoder" className="space-y-6 animate-in fade-in-50 duration-300">
             <PdfDecoderGenerator />
+          </TabsContent>
+
+          <TabsContent value="decodergen" className="space-y-6 animate-in fade-in-50 duration-300">
+            <DecoderGenerator />
           </TabsContent>
         </Tabs>
       </div>
