@@ -88,8 +88,21 @@ export const DecoderGenerator = () => {
   
   const [jobId, setJobId] = useState<string>("");
 
-  const DECODERGEN_BASE = import.meta.env.VITE_DECODERGEN_BASE;
-  const DECODERGEN_KEY = import.meta.env.VITE_DECODERGEN_KEY;
+  // Manufacturer-specific API credentials
+  const MILESIGHT_BASE = import.meta.env.VITE_MILESIGHT_BASE;
+  const MILESIGHT_KEY = import.meta.env.VITE_MILESIGHT_KEY;
+  const DECENTLAB_BASE = import.meta.env.VITE_DECENTLAB_BASE;
+  const DECENTLAB_KEY = import.meta.env.VITE_DECENTLAB_KEY;
+
+  // Get the appropriate base URL and key based on manufacturer
+  const getApiCredentials = () => {
+    if (manufacturer === "milesight") {
+      return { base: MILESIGHT_BASE, key: MILESIGHT_KEY };
+    } else if (manufacturer === "decentlab") {
+      return { base: DECENTLAB_BASE, key: DECENTLAB_KEY };
+    }
+    return { base: "", key: "" };
+  };
 
   // Sync step with currentIndex
   useEffect(() => {
@@ -249,7 +262,13 @@ export const DecoderGenerator = () => {
   };
 
   const callDecoderGenAPI = async (endpoint: string, body: object) => {
-    const response = await fetch(`${DECODERGEN_BASE}/api/${endpoint}?code=${DECODERGEN_KEY}`, {
+    const { base, key } = getApiCredentials();
+    
+    if (!base || !key) {
+      throw new Error(`API credentials not configured for ${manufacturer}`);
+    }
+
+    const response = await fetch(`${base}/api/${endpoint}?code=${key}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
