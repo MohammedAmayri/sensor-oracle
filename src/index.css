@@ -101,4 +101,52 @@
   .glow-accent {
     box-shadow: 0 2px 12px rgba(74, 155, 155, 0.25);
   }
+
+  .prose table {
+    @apply w-full border-collapse;
+  }
+
+  .prose table thead {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+
+  .prose table th {
+    @apply border border-gray-300 dark:border-gray-700 px-4 py-2 text-left font-semibold;
+  }
+
+  .prose table td {
+    @apply border border-gray-300 dark:border-gray-700 px-4 py-2;
+  }
+
+  .prose table tbody tr:nth-child(even) {
+    @apply bg-gray-50 dark:bg-gray-900;
+  }
+
+  .prose table tbody tr:hover {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+
+  .prose h1 {
+    @apply text-2xl font-bold mt-6 mb-4;
+  }
+
+  .prose h2 {
+    @apply text-xl font-bold mt-5 mb-3;
+  }
+
+  .prose h3 {
+    @apply text-lg font-semibold mt-4 mb-2;
+  }
+
+  .prose code {
+    @apply bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm;
+  }
+
+  .prose pre {
+    @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-md overflow-x-auto;
+  }
+
+  .prose pre code {
+    @apply bg-transparent p-0;
+  }
 }
