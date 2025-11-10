@@ -773,7 +773,7 @@ export const DecoderGenerator = () => {
 
             <div className="flex gap-2">
               <Button
-                onClick={runStep1GenerateCompositeSpec}
+                onClick={manufacturer === "decentlab" ? runDecentlabStep1GenerateRules : runStep1GenerateCompositeSpec}
                 disabled={isProcessing}
                 className="flex-1"
                 data-testid="button-start-generation"
@@ -783,7 +783,7 @@ export const DecoderGenerator = () => {
                 ) : (
                   <Code2 className="w-4 h-4 mr-2" />
                 )}
-                Start Generation Process
+                {manufacturer === "decentlab" ? "Start Decentlab Generation" : "Start Generation Process"}
               </Button>
               <Button
                 onClick={() => goToStep(findIndexByStep("upload_doc"))}
@@ -869,44 +869,46 @@ export const DecoderGenerator = () => {
             </CardContent>
           </Card>
 
-          {/* Step 1: Composite Spec */}
-          <Card className="glass-card" data-testid="card-step1">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Step 1: Composite Spec</span>
-                {step !== "step1_composite" && <Check className="w-5 h-5 text-green-500" />}
-              </CardTitle>
-            </CardHeader>
-            {step === "step1_composite" && (
-              <CardContent className="space-y-4">
-                <ContentDisplay
-                  content={compositeSpec}
-                  onChange={setCompositeSpec}
-                  contentType="rules"
-                  placeholder="Composite spec will appear here after generation..."
-                  dataTestId="content-composite-spec"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => copyToClipboard(compositeSpec, "Composite Spec")}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Copy className="w-3 h-3 mr-2" />
-                    Copy
-                  </Button>
-                  <Button
-                    onClick={runStep2GenerateRulesBlock}
-                    disabled={isProcessing}
-                    data-testid="button-next-step2"
-                  >
-                    {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                    Next: Generate Rules Block
-                  </Button>
-                </div>
-              </CardContent>
-            )}
-          </Card>
+          {/* Step 1: Composite Spec (Milesight only) */}
+          {manufacturer === "milesight" && (
+            <Card className="glass-card" data-testid="card-step1">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Step 1: Composite Spec</span>
+                  {step !== "step1_composite" && <Check className="w-5 h-5 text-green-500" />}
+                </CardTitle>
+              </CardHeader>
+              {step === "step1_composite" && (
+                <CardContent className="space-y-4">
+                  <ContentDisplay
+                    content={compositeSpec}
+                    onChange={setCompositeSpec}
+                    contentType="rules"
+                    placeholder="Composite spec will appear here after generation..."
+                    dataTestId="content-composite-spec"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => copyToClipboard(compositeSpec, "Composite Spec")}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Copy className="w-3 h-3 mr-2" />
+                      Copy
+                    </Button>
+                    <Button
+                      onClick={runStep2GenerateRulesBlock}
+                      disabled={isProcessing}
+                      data-testid="button-next-step2"
+                    >
+                      {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                      Next: Generate Rules Block
+                    </Button>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Step 2: Rules Block */}
           {(step === "step2_rules" || step === "step3_examples" || step === "step4_reconcile" || 
@@ -947,8 +949,19 @@ export const DecoderGenerator = () => {
                       <Copy className="w-3 h-3 mr-2" />
                       Copy
                     </Button>
+                    {manufacturer === "decentlab" && rulesBlock && (
+                      <Button
+                        onClick={runDecentlabStep2RefineRules}
+                        disabled={isProcessing}
+                        variant="outline"
+                        data-testid="button-refine-rules"
+                      >
+                        {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                        Refine Rules
+                      </Button>
+                    )}
                     <Button
-                      onClick={runStep3ExtractExamplesTables}
+                      onClick={manufacturer === "decentlab" ? runDecentlabStep3ExtractExamples : runStep3ExtractExamplesTables}
                       disabled={isProcessing}
                       data-testid="button-next-step3"
                     >
@@ -990,12 +1003,12 @@ export const DecoderGenerator = () => {
                       Copy
                     </Button>
                     <Button
-                      onClick={runStep4ReconcileRulesBlock}
+                      onClick={manufacturer === "decentlab" ? runDecentlabStep4GenerateDecoder : runStep4ReconcileRulesBlock}
                       disabled={isProcessing}
                       data-testid="button-next-step4"
                     >
                       {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                      Next: Reconcile Rules
+                      {manufacturer === "decentlab" ? "Next: Generate Decoder" : "Next: Reconcile Rules"}
                     </Button>
                   </div>
                 </CardContent>
@@ -1003,8 +1016,8 @@ export const DecoderGenerator = () => {
             </Card>
           )}
 
-          {/* Step 4: Reconcile */}
-          {(step === "step4_reconcile" || step === "step5_decoder" || step === "step6_repair" || 
+          {/* Step 4: Reconcile (Milesight only) */}
+          {manufacturer === "milesight" && (step === "step4_reconcile" || step === "step5_decoder" || step === "step6_repair" || 
             step === "step7_feedback") && (
             <Card className="glass-card" data-testid="card-step4">
               <CardHeader>
@@ -1073,17 +1086,19 @@ export const DecoderGenerator = () => {
                       <Copy className="w-3 h-3 mr-2" />
                       Copy
                     </Button>
+                    {manufacturer === "milesight" && (
+                      <Button
+                        onClick={runStep6AutoRepairDecoder}
+                        disabled={isProcessing}
+                        variant="outline"
+                        data-testid="button-repair"
+                      >
+                        {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                        Auto-Repair
+                      </Button>
+                    )}
                     <Button
-                      onClick={runStep6AutoRepairDecoder}
-                      disabled={isProcessing}
-                      variant="outline"
-                      data-testid="button-repair"
-                    >
-                      {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                      Auto-Repair
-                    </Button>
-                    <Button
-                      onClick={runStep7DecoderFeedback}
+                      onClick={manufacturer === "decentlab" ? runDecentlabStep5StaticFeedback : runStep7DecoderFeedback}
                       disabled={isProcessing}
                       data-testid="button-next-step7"
                     >
@@ -1096,8 +1111,8 @@ export const DecoderGenerator = () => {
             </Card>
           )}
 
-          {/* Step 6: Auto-Repaired Code */}
-          {(step === "step6_repair" || step === "step7_feedback") && (
+          {/* Step 6: Auto-Repaired Code (Milesight only) */}
+          {manufacturer === "milesight" && (step === "step6_repair" || step === "step7_feedback") && (
             <Card className="glass-card bg-green-50 dark:bg-green-950" data-testid="card-step6">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -1178,34 +1193,64 @@ export const DecoderGenerator = () => {
                     <strong>Iterate on the decoder:</strong> Use the feedback loop to improve your decoder.
                   </p>
                   <div className="flex gap-2 flex-wrap">
-                    <Button
-                      onClick={() => {
-                        goToStep(findIndexByStep("step5_decoder"));
-                        toast({
-                          title: "Ready to Regenerate",
-                          description: "Review your decoder and click 'Regenerate' to apply feedback",
-                        });
-                      }}
-                      variant="default"
-                      data-testid="button-iterate-decoder"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Go Back to Step 5 (Regenerate Decoder)
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        goToStep(findIndexByStep("step6_repair"));
-                        toast({
-                          title: "Ready to Auto-Repair",
-                          description: "Review and click 'Auto-Repair' to fix issues",
-                        });
-                      }}
-                      variant="default"
-                      data-testid="button-iterate-repair"
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Go Back to Step 6 (Auto-Repair)
-                    </Button>
+                    {manufacturer === "decentlab" ? (
+                      <>
+                        <Button
+                          onClick={() => {
+                            goToStep(findIndexByStep("step2_rules"));
+                            toast({
+                              title: "Ready to Refine Rules",
+                              description: "Review your rules and click 'Refine Rules' to apply feedback",
+                            });
+                          }}
+                          variant="default"
+                          data-testid="button-iterate-rules"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Go Back to Step 1 (Refine Rules)
+                        </Button>
+                        <Button
+                          onClick={runDecentlabStep6RefineDecoder}
+                          disabled={isProcessing}
+                          variant="default"
+                          data-testid="button-refine-decoder"
+                        >
+                          {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                          Refine Decoder with Feedback
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={() => {
+                            goToStep(findIndexByStep("step5_decoder"));
+                            toast({
+                              title: "Ready to Regenerate",
+                              description: "Review your decoder and click 'Regenerate' to apply feedback",
+                            });
+                          }}
+                          variant="default"
+                          data-testid="button-iterate-decoder"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Go Back to Step 5 (Regenerate Decoder)
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            goToStep(findIndexByStep("step6_repair"));
+                            toast({
+                              title: "Ready to Auto-Repair",
+                              description: "Review and click 'Auto-Repair' to fix issues",
+                            });
+                          }}
+                          variant="default"
+                          data-testid="button-iterate-repair"
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Go Back to Step 6 (Auto-Repair)
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
 
