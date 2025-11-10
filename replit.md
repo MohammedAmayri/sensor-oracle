@@ -122,6 +122,13 @@ src/
   - Accessed via `import.meta.env.VITE_FUNC_BASE` and `import.meta.env.VITE_FUNC_KEY` in frontend
 
 ## Recent Changes
+- **2025-11-10:** Fixed PDF upload and created shared Azure utilities
+  - Created `src/lib/azureDocumentIntelligence.ts` shared utility module
+  - Refactored DecoderGenerator to use shared utilities (fixes PDF upload issue)
+  - Both DecoderGenerator and PdfDecoderGenerator now use the same Azure endpoints
+  - Shared utilities include: uploadPdfFile, getJob, loadEvidenceWithRefresh, saveEvidence, pollJobUntil
+  - All components now use CreateJobAndUpload endpoint with proper headers
+
 - **2025-11-10:** Added Decoder Generator feature (4th tab)
   - Manufacturer-based decoder generation workflow (Milesight, DecentLab, Dragino, Watteco, Enginko)
   - Implemented Milesight workflow with 7-step process:
