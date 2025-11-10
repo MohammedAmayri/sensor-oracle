@@ -1,0 +1,373 @@
+1. Endpoint contracts (input/output)
+
+All bodies are JSON. Deserialization is case-insensitive (JsonDefaults.Options), but property names below match the [JsonPropertyName] attributes.
+
+1) POST /decentlab/rules/generate
+
+Function: GenerateDecentlabRulesFunction
+Route: decentlab/rules/generate
+
+Request body
+
+{
+  "documentation": "<full Decentlab markdown/HTML>",
+  "sensorPrompt": "Optional device-specific hints, can be empty or omitted"
+}
+
+
+documentation (required): the raw markdown/HTML from your PDF (after DI).
+
+sensorPrompt (optional): any human hints you want to inject into the rules template.
+
+Success response (200)
+
+{
+  "rulesBlock": "# DECENTLAB_RULES (DL-WRM)\nHEADER:\n- Name=Version; ...\n..."
+}
+
+
+rulesBlock: the full DECENTLAB_RULES text (no fences).
+
+Error responses (400)
+
+Invalid JSON:
+
+{
+  "error": "Invalid JSON body.",
+  "details": "<exception message>"
+}
+
+
+Missing documentation:
+
+{
+  "error": "Property 'documentation' is required."
+}
+
+2) POST /decentlab/rules/refine
+
+Function: RefineDecentlabRulesFunction
+Route: decentlab/rules/refine
+
+Request body
+
+{
+  "documentation": "<same doc or updated doc>",
+  "sensorPrompt": "Optional sensor prompt, can be reused or tweaked",
+  "currentRulesBlock": "# DECENTLAB_RULES (...)",
+  "userFeedback": "What to fix in the rules block (free text)"
+}
+
+
+Required:
+
+documentation
+
+currentRulesBlock
+
+Optional:
+
+sensorPrompt
+
+userFeedback (if null/empty, the service injects a default “tighten mapping” message internally)
+
+Success response (200)
+
+{
+  "rulesBlock": "# DECENTLAB_RULES (refined)\nHEADER:\n..."
+}
+
+
+Error responses (400)
+
+Invalid JSON.
+
+Missing documentation or currentRulesBlock:
+
+{
+  "error": "Properties 'documentation' and 'currentRulesBlock' are required."
+}
+
+3) POST /decentlab/examples/extract
+
+Function: ExtractDecentlabExamplesFunction
+Route: decentlab/examples/extract
+
+Request body
+
+{
+  "documentation": "<full Decentlab markdown/HTML>"
+}
+
+
+Success response (200)
+
+{
+  "examplesMarkdown": "## Example 1\n\nMessageHex: 021a10000764a079b104f904c40c60\n\n| Raw | Name | Value | Unit |\n| --- | --- | --- | --- |\n| 02 | Version | 2 | |\n..."
+}
+
+
+examplesMarkdown: the whole “Example N / MessageHex / table” markdown block.
+
+Error responses (400)
+
+Invalid JSON.
+
+Missing documentation:
+
+{
+  "error": "Property 'documentation' is required."
+}
+
+4) POST /decentlab/decoder/generate
+
+Function: GenerateDecentlabDecoderFunction
+Route: decentlab/decoder/generate
+
+Request body
+
+{
+  "documentation": "<same doc as before (optional but used by prompt)>",
+  "rulesBlock": "# DECENTLAB_RULES ...",
+  "examplesMarkdown": "## Example 1\nMessageHex: ...\n| Raw | Name | Value | Unit |..."
+}
+
+
+All three are required:
+
+documentation
+
+rulesBlock (final or at least good enough)
+
+examplesMarkdown (from extract + any manual edits you applied in the UI)
+
+Success response (200)
+
+{
+  "decoderCode": "using System;\nusing Microsoft.AspNetCore.Mvc;\n...\npublic class DecoderDecentlabDlWrm { ... }"
+}
+
+
+decoderCode: full, compilable C# Azure Function source (no fences, no commentary).
+
+Error responses (400)
+
+Invalid JSON.
+
+Any required property missing:
+
+{
+  "error": "Properties 'documentation', 'rulesBlock', and 'examplesMarkdown' are required."
+}
+
+
+Or if the model returns empty code:
+
+{
+  "error": "OpenAI returned empty decoder code."
+}
+
+5) POST /decentlab/decoder/feedback
+
+Function: GetStaticDecoderFeedbackFunction
+Route: decentlab/decoder/feedback
+
+Request body
+
+{
+  "decoderCode": "using System; ... result[\"BatteryVoltage\"] = ...;",
+  "rulesBlock": "# DECENTLAB_RULES ..."
+}
+
+
+Required:
+
+decoderCode
+
+rulesBlock
+
+Success response (200)
+
+{
+  "feedback": "STATIC_DECODER_FEEDBACK\nOne or more decoded JSON property names are invalid...\n- Flags\n- Sensor0Present\n- BatteryVoltage_Unit\n...",
+  "hasIssues": true
+}
+
+
+feedback: empty string if everything is fine, otherwise a structured textual report.
+
+hasIssues: true if there are bad names, false otherwise.
+
+If feedback is empty, hasIssues will be false.
+
+Error responses (400)
+
+Invalid JSON.
+
+Missing decoderCode or rulesBlock:
+
+{
+  "error": "Properties 'decoderCode' and 'rulesBlock' are required."
+}
+
+6) POST /decentlab/decoder/refine
+
+Function: RefineDecentlabDecoderFunction
+Route: decentlab/decoder/refine
+
+Request body
+
+{
+  "currentCode": "using System; ... // current decoder",
+  "userFeedback": "Battery voltage looks wrong vs example 1. Also remove Humidity_Unit.",
+  "documentation": "<optional docs, same as before>",
+  "rulesBlock": "# DECENTLAB_RULES ...",
+  "examplesMarkdown": "## Example 1 ...",
+  "decoderFeedback": "STATIC_DECODER_FEEDBACK\n- Flags\n- Sensor0Present\n..."
+}
+
+
+Required:
+
+currentCode
+
+Optional:
+
+userFeedback
+
+documentation
+
+rulesBlock
+
+examplesMarkdown
+
+decoderFeedback (the static feedback string from previous step)
+
+The function internally fills default userFeedback if you send null/empty.
+
+Success response (200)
+
+{
+  "decoderCode": "using System;\n// updated C# function with fixes applied..."
+}
+
+
+Error responses (400)
+
+Invalid JSON.
+
+Missing currentCode:
+
+{
+  "error": "Property 'currentCode' is required."
+}
+
+
+Or if model returns blank:
+
+{
+  "error": "OpenAI returned empty decoder code after refinement."
+}
+
+2. Recommended workflow / order of calls
+
+This is the HTTP version of your original console flow:
+
+Step 0 – Inputs you already have
+
+documentation: Markdown/HTML text from Document Intelligence for a single Decentlab device.
+
+Optional sensorPrompt: “this is DL-WRM, sensor 2 is always battery voltage”, etc.
+
+Step 1 – Generate initial rules
+
+POST /decentlab/rules/generate
+
+Body: { documentation, sensorPrompt? }
+
+Get: rulesBlock
+
+(Optional) Let the user inspect/edit rulesBlock in the UI.
+
+If user wants changes, call:
+
+POST /decentlab/rules/refine
+
+Body: { documentation, sensorPrompt?, currentRulesBlock, userFeedback }
+
+Replace rulesBlock with new result.
+
+Repeat refine until “good enough”.
+
+Step 2 – Extract examples
+
+POST /decentlab/examples/extract
+
+Body: { documentation }
+
+Get: examplesMarkdown
+
+(Optional) Let user manually edit examplesMarkdown in your admin UI (fix OCR issues, etc.).
+
+Step 3 – Generate initial decoder
+
+POST /decentlab/decoder/generate
+
+Body:
+
+{
+  "documentation": "<same doc>",
+  "rulesBlock": "<final rulesBlock from step 1>",
+  "examplesMarkdown": "<final examplesMarkdown from step 2>"
+}
+
+
+Get: decoderCode (initial version)
+
+(Optional) Show decoderCode to user in editor; maybe run some test payloads in your UI.
+
+Step 4 – Static feedback + refinement loop
+
+Static name check
+
+POST /decentlab/decoder/feedback
+
+{
+  "decoderCode": "<current decoderCode>",
+  "rulesBlock": "<final rulesBlock>"
+}
+
+
+Get: feedback, hasIssues.
+
+If hasIssues == true, show this text in UI and/or feed into next step as decoderFeedback.
+
+Refine decoder
+
+When user wants an AI-assisted update (or you want to automatically fix static issues):
+
+POST /decentlab/decoder/refine
+
+{
+  "currentCode": "<current decoderCode>",
+  "userFeedback": "what's wrong / what to fix",
+  "documentation": "<optional>",
+  "rulesBlock": "<final rulesBlock>",
+  "examplesMarkdown": "<final examplesMarkdown>",
+  "decoderFeedback": "<feedback from step 8 if any>"
+}
+
+
+Replace decoderCode with the returned version.
+
+Loop step 8–9 as often as you like (plus manual edits in UI) until the decoder is stable.
+
+At the end, you store:
+
+Final rulesBlock
+
+Final examplesMarkdown
+
+Final decoderCode
+
+for that Decentlab device profile.
