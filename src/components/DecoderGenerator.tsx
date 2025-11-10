@@ -11,6 +11,7 @@ import { uploadPdfFile, getJob, loadEvidenceWithRefresh, type JobResponse } from
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
+import { ContentDisplay } from "@/components/ContentDisplay";
 
 type Manufacturer = "milesight" | "decentlab" | "dragino" | "watteco" | "enginko";
 
@@ -577,11 +578,12 @@ export const DecoderGenerator = () => {
             </CardHeader>
             {step === "step1_composite" && (
               <CardContent className="space-y-4">
-                <Textarea
-                  value={compositeSpec}
-                  onChange={(e) => setCompositeSpec(e.target.value)}
-                  className="min-h-[200px] font-mono text-sm"
-                  data-testid="textarea-composite-spec"
+                <ContentDisplay
+                  content={compositeSpec}
+                  onChange={setCompositeSpec}
+                  contentType="rules"
+                  placeholder="Composite spec will appear here after generation..."
+                  dataTestId="content-composite-spec"
                 />
                 <div className="flex gap-2">
                   <Button
@@ -628,11 +630,12 @@ export const DecoderGenerator = () => {
                       data-testid="textarea-sensor-prompt"
                     />
                   </div>
-                  <Textarea
-                    value={rulesBlock}
-                    onChange={(e) => setRulesBlock(e.target.value)}
-                    className="min-h-[300px] font-mono text-sm"
-                    data-testid="textarea-rules-block"
+                  <ContentDisplay
+                    content={rulesBlock}
+                    onChange={setRulesBlock}
+                    contentType="rules"
+                    placeholder="Rules block will appear here after generation..."
+                    dataTestId="content-rules-block"
                   />
                   <div className="flex gap-2">
                     <Button
@@ -669,11 +672,12 @@ export const DecoderGenerator = () => {
               </CardHeader>
               {step === "step3_examples" && (
                 <CardContent className="space-y-4">
-                  <Textarea
-                    value={examplesTablesMd}
-                    onChange={(e) => setExamplesTablesMd(e.target.value)}
-                    className="min-h-[200px] font-mono text-sm"
-                    data-testid="textarea-examples"
+                  <ContentDisplay
+                    content={examplesTablesMd}
+                    onChange={setExamplesTablesMd}
+                    contentType="markdown"
+                    placeholder="Example tables will appear here after extraction..."
+                    dataTestId="content-examples"
                   />
                   <div className="flex gap-2">
                     <Button
@@ -710,11 +714,12 @@ export const DecoderGenerator = () => {
               </CardHeader>
               {step === "step4_reconcile" && (
                 <CardContent className="space-y-4">
-                  <Textarea
-                    value={rulesBlock}
-                    onChange={(e) => setRulesBlock(e.target.value)}
-                    className="min-h-[300px] font-mono text-sm"
-                    data-testid="textarea-reconciled-rules"
+                  <ContentDisplay
+                    content={rulesBlock}
+                    onChange={setRulesBlock}
+                    contentType="rules"
+                    placeholder="Reconciled rules will appear here..."
+                    dataTestId="content-reconciled-rules"
                   />
                   <div className="flex gap-2">
                     <Button
@@ -750,11 +755,13 @@ export const DecoderGenerator = () => {
               </CardHeader>
               {step === "step5_decoder" && (
                 <CardContent className="space-y-4">
-                  <Textarea
-                    value={decoderCode}
-                    onChange={(e) => setDecoderCode(e.target.value)}
-                    className="min-h-[400px] font-mono text-sm"
-                    data-testid="textarea-decoder-code"
+                  <ContentDisplay
+                    content={decoderCode}
+                    onChange={setDecoderCode}
+                    contentType="code"
+                    language="csharp"
+                    placeholder="C# decoder code will appear here after generation..."
+                    dataTestId="content-decoder-code"
                   />
                   <div className="flex gap-2">
                     <Button
@@ -835,10 +842,12 @@ export const DecoderGenerator = () => {
                 <CardTitle>Step 7: Decoder Feedback</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div 
-                  className="prose prose-sm dark:prose-invert max-w-none p-4 bg-muted rounded-md"
-                  dangerouslySetInnerHTML={{ __html: feedbackMarkdown.replace(/\n/g, '<br>') }}
-                  data-testid="feedback-content"
+                <ContentDisplay
+                  content={feedbackMarkdown}
+                  onChange={setFeedbackMarkdown}
+                  contentType="markdown"
+                  placeholder="Feedback will appear here after generation..."
+                  dataTestId="content-feedback"
                 />
                 <div className="flex gap-2">
                   <Button

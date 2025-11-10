@@ -11,29 +11,34 @@ import rehypeSanitize from "rehype-sanitize";
 
 interface ContentDisplayProps {
   content: string;
-  onChange: (value: string) => void;
-  contentType?: "code" | "markdown" | "rules" | "auto";
+  onChange?: (value: string) => void;
+  contentType?: "code" | "markdown" | "rules" | "plain";
   language?: string;
   readonly?: boolean;
+  previewOnly?: boolean;
+  defaultMode?: "preview" | "edit";
+  placeholder?: string;
   dataTestId?: string;
 }
 
 export const ContentDisplay = ({
   content,
   onChange,
-  contentType = "auto",
+  contentType = "plain",
   language = "csharp",
   readonly = false,
-  dataTestId,
+  previewOnly = false,
+  defaultMode = "preview",
+  placeholder = "No content available",
+  dataTestId = "content-display",
 }: ContentDisplayProps) => {
-  const [mode, setMode] = useState<"preview" | "edit">("preview");
+  const [mode, setMode] = useState<"preview" | "edit">(defaultMode);
 
-  // Auto-detect content type if not specified
-  const detectedType = contentType === "auto" ? detectContentType(content) : contentType;
+  const showToggle = !readonly && !previewOnly && onChange;
 
   return (
     <div className="space-y-2">
-      {!readonly && (
+      {showToggle && (
         <div className="flex gap-2 mb-2">
           <Button
             variant={mode === "preview" ? "default" : "outline"}
@@ -56,9 +61,15 @@ export const ContentDisplay = ({
         </div>
       )}
 
-      {mode === "preview" || readonly ? (
+      {!content && (
+        <div className="border rounded-md bg-muted p-8 text-center text-muted-foreground">
+          {placeholder}
+        </div>
+      )}
+
+      {content && (mode === "preview" || readonly || previewOnly) && (
         <div className="border rounded-md bg-background">
-          {detectedType === "code" && (
+          {contentType === "code" && (
             <SyntaxHighlighter
               language={language}
               style={vscDarkPlus}
@@ -75,7 +86,7 @@ export const ContentDisplay = ({
             </SyntaxHighlighter>
           )}
 
-          {detectedType === "markdown" && (
+          {contentType === "markdown" && (
             <div className="p-4 prose prose-sm dark:prose-invert max-w-none" data-testid={dataTestId}>
               <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
                 {content}
@@ -83,13 +94,15 @@ export const ContentDisplay = ({
             </div>
           )}
 
-          {(detectedType === "rules" || detectedType === "auto") && (
+          {(contentType === "rules" || contentType === "plain") && (
             <pre className="p-4 text-sm font-mono overflow-x-auto whitespace-pre-wrap" data-testid={dataTestId}>
               <code>{content}</code>
             </pre>
           )}
         </div>
-      ) : (
+      )}
+
+      {content && mode === "edit" && !readonly && !previewOnly && onChange && (
         <Textarea
           value={content}
           onChange={(e) => onChange(e.target.value)}
@@ -106,48 +119,3 @@ export const ContentDisplay = ({
     </div>
   );
 };
-
-// Helper function to detect content type
-function detectContentType(content: string): "code" | "markdown" | "rules" | "auto" {
-  if (!content) return "auto";
-
-  // Check for C# code patterns
-  if (
-    content.includes("using ") ||
-    content.includes("namespace ") ||
-    content.includes("public class ") ||
-    content.includes("public static ") ||
-    content.includes("private ") ||
-    content.includes("return ")
-  ) {
-    return "code";
-  }
-
-  // Check for markdown tables
-  if (content.includes("|") && content.includes("---")) {
-    return "markdown";
-  }
-
-  // Check for rules format (MAP, LOOKUP, RENDER, BITFIELDS)
-  if (
-    content.includes("MAP:") ||
-    content.includes("LOOKUP:") ||
-    content.includes("RENDER:") ||
-    content.includes("BITFIELDS")
-  ) {
-    return "rules";
-  }
-
-  // Check for other markdown patterns
-  if (
-    content.includes("# ") ||
-    content.includes("## ") ||
-    content.includes("### ") ||
-    content.includes("**") ||
-    content.includes("```")
-  ) {
-    return "markdown";
-  }
-
-  return "auto";
-}
