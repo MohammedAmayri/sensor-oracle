@@ -806,11 +806,13 @@ export const DecoderGenerator = () => {
               </CardHeader>
               {step === "step6_repair" && (
                 <CardContent className="space-y-4">
-                  <Textarea
-                    value={decoderCode}
-                    onChange={(e) => setDecoderCode(e.target.value)}
-                    className="min-h-[400px] font-mono text-sm"
-                    data-testid="textarea-repaired-code"
+                  <ContentDisplay
+                    content={decoderCode}
+                    onChange={setDecoderCode}
+                    contentType="code"
+                    language="csharp"
+                    placeholder="Auto-repaired decoder code will appear here..."
+                    dataTestId="content-repaired-code"
                   />
                   <div className="flex gap-2">
                     <Button
