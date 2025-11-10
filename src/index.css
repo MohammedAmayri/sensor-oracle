@@ -103,27 +103,32 @@
   }
 
   .prose table {
-    @apply w-full border-collapse;
+    @apply w-full border-collapse text-sm;
   }
 
   .prose table thead {
-    @apply bg-gray-100 dark:bg-gray-800;
+    @apply bg-primary/10 dark:bg-primary/20;
   }
 
   .prose table th {
-    @apply border border-gray-300 dark:border-gray-700 px-4 py-2 text-left font-semibold;
+    @apply border border-gray-300 dark:border-gray-700 px-3 py-2 text-left font-semibold text-xs uppercase tracking-wide;
   }
 
   .prose table td {
-    @apply border border-gray-300 dark:border-gray-700 px-4 py-2;
+    @apply border border-gray-300 dark:border-gray-700 px-3 py-2 font-mono text-xs;
   }
 
   .prose table tbody tr:nth-child(even) {
-    @apply bg-gray-50 dark:bg-gray-900;
+    @apply bg-muted/30;
   }
 
   .prose table tbody tr:hover {
-    @apply bg-gray-100 dark:bg-gray-800;
+    @apply bg-muted/50 transition-colors;
+  }
+
+  /* Special styling for channel/type/value tables */
+  .prose table td:first-child {
+    @apply font-semibold;
   }
 
   .prose h1 {
