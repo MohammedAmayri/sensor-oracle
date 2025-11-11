@@ -78,6 +78,7 @@ export const DecoderGenerator = () => {
   const [decoderCode, setDecoderCode] = useState("");
   const [feedbackMarkdown, setFeedbackMarkdown] = useState("");
   const [sensorSpecificPrompt, setSensorSpecificPrompt] = useState("");
+  const [refinementFeedback, setRefinementFeedback] = useState("");
   
   // Watteco-specific state
   const [deviceProfile, setDeviceProfile] = useState("");
@@ -714,6 +715,77 @@ export const DecoderGenerator = () => {
     }
   };
 
+  const refineDecoderWithFeedback = async () => {
+    if (!decoderCode) {
+      toast({
+        title: "No decoder code",
+        description: "Generate a decoder first before refining",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const refineBase = import.meta.env.VITE_REFINE_BASE;
+      const refineKey = import.meta.env.VITE_REFINE_KEY;
+
+      if (!refineBase || !refineKey) {
+        throw new Error("Refine API credentials not configured");
+      }
+
+      const requestBody: any = {
+        manufacturer,
+        documentation: documentation || undefined,
+        currentDecoderCode: decoderCode,
+        userFeedback: refinementFeedback || undefined,
+      };
+
+      if (manufacturer === "milesight") {
+        requestBody.rulesBlock = rulesBlock || undefined;
+        requestBody.examplesMarkdown = examplesTablesMd || undefined;
+        requestBody.compositeSummary = compositeSpec || undefined;
+      } else if (manufacturer === "decentlab") {
+        requestBody.rulesBlock = rulesBlock || undefined;
+        requestBody.examplesMarkdown = examplesTablesMd || undefined;
+      } else if (manufacturer === "dragino") {
+        requestBody.rulesBlock = rulesBlock || undefined;
+      } else if (manufacturer === "watteco") {
+        requestBody.deviceProfile = deviceProfile || undefined;
+        requestBody.deviceName = deviceName || undefined;
+        requestBody.safeClassName = safeClassName || undefined;
+      }
+
+      const response = await fetch(`${refineBase}/api/RefineDecoder?code=${refineKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Refine API returned ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setDecoderCode(result.refinedDecoderCode);
+
+      toast({
+        title: "Decoder refined successfully",
+        description: result.refinementNotes || "Your feedback has been incorporated into the decoder",
+      });
+    } catch (error) {
+      toast({
+        title: "Refinement failed",
+        description: error instanceof Error ? error.message : "Could not refine decoder",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -1304,7 +1376,25 @@ export const DecoderGenerator = () => {
                     placeholder="C# decoder code will appear here after generation..."
                     dataTestId="content-decoder-code"
                   />
-                  <div className="flex gap-2">
+
+                  {/* Feedback input for Dragino and Watteco (they don't have Step 7) */}
+                  {(manufacturer === "dragino" || manufacturer === "watteco") && (
+                    <div className="border-t pt-4 space-y-2">
+                      <Label htmlFor="refinement-notes" className="text-sm font-semibold">
+                        Refinement Notes (Optional):
+                      </Label>
+                      <Textarea
+                        id="refinement-notes"
+                        value={refinementFeedback}
+                        onChange={(e) => setRefinementFeedback(e.target.value)}
+                        placeholder="Add any specific requirements or corrections to refine the decoder..."
+                        className="min-h-[80px]"
+                        data-testid="textarea-refinement-notes"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 flex-wrap">
                     <Button
                       onClick={() => copyToClipboard(decoderCode, "Decoder Code")}
                       variant="outline"
@@ -1313,6 +1403,7 @@ export const DecoderGenerator = () => {
                       <Copy className="w-3 h-3 mr-2" />
                       Copy
                     </Button>
+
                     {manufacturer === "milesight" && (
                       <Button
                         onClick={runStep6AutoRepairDecoder}
@@ -1324,14 +1415,27 @@ export const DecoderGenerator = () => {
                         Auto-Repair
                       </Button>
                     )}
-                    <Button
-                      onClick={manufacturer === "decentlab" ? runDecentlabStep5StaticFeedback : runStep7DecoderFeedback}
-                      disabled={isProcessing}
-                      data-testid="button-next-step7"
-                    >
-                      {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                      Get Feedback
-                    </Button>
+
+                    {(manufacturer === "dragino" || manufacturer === "watteco") ? (
+                      <Button
+                        onClick={refineDecoderWithFeedback}
+                        disabled={isProcessing || !decoderCode}
+                        variant="default"
+                        data-testid="button-refine-decoder"
+                      >
+                        {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                        Refine Decoder with Feedback
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={manufacturer === "decentlab" ? runDecentlabStep5StaticFeedback : runStep7DecoderFeedback}
+                        disabled={isProcessing}
+                        data-testid="button-next-step7"
+                      >
+                        {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                        Get Feedback
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               )}
@@ -1407,8 +1511,8 @@ export const DecoderGenerator = () => {
                   </Label>
                   <Textarea
                     id="user-feedback-notes"
-                    value={sensorSpecificPrompt}
-                    onChange={(e) => setSensorSpecificPrompt(e.target.value)}
+                    value={refinementFeedback}
+                    onChange={(e) => setRefinementFeedback(e.target.value)}
                     placeholder="Add any specific requirements, corrections, or observations you'd like to incorporate..."
                     className="min-h-[100px]"
                     data-testid="textarea-user-feedback"
@@ -1417,67 +1521,33 @@ export const DecoderGenerator = () => {
 
                 <div className="bg-muted/50 p-4 rounded-md">
                   <p className="text-sm text-muted-foreground mb-3">
-                    <strong>Iterate on the decoder:</strong> Use the feedback loop to improve your decoder.
+                    <strong>Iterate on the decoder:</strong> Use the universal refinement to improve your decoder based on feedback.
                   </p>
                   <div className="flex gap-2 flex-wrap">
-                    {manufacturer === "decentlab" ? (
-                      <>
-                        <Button
-                          onClick={() => {
-                            goToStep(findIndexByStep("step2_rules"));
-                            toast({
-                              title: "Ready to Refine Rules",
-                              description: "Review your rules and click 'Refine Rules' to apply feedback",
-                            });
-                          }}
-                          variant="default"
-                          data-testid="button-iterate-rules"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Go Back to Step 1 (Refine Rules)
-                        </Button>
-                        <Button
-                          onClick={runDecentlabStep6RefineDecoder}
-                          disabled={isProcessing}
-                          variant="default"
-                          data-testid="button-refine-decoder"
-                        >
-                          {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                          Refine Decoder with Feedback
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          onClick={() => {
-                            goToStep(findIndexByStep("step5_decoder"));
-                            toast({
-                              title: "Ready to Regenerate",
-                              description: "Review your decoder and click 'Regenerate' to apply feedback",
-                            });
-                          }}
-                          variant="default"
-                          data-testid="button-iterate-decoder"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Go Back to Step 5 (Regenerate Decoder)
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            goToStep(findIndexByStep("step6_repair"));
-                            toast({
-                              title: "Ready to Auto-Repair",
-                              description: "Review and click 'Auto-Repair' to fix issues",
-                            });
-                          }}
-                          variant="default"
-                          data-testid="button-iterate-repair"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Go Back to Step 6 (Auto-Repair)
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      onClick={refineDecoderWithFeedback}
+                      disabled={isProcessing || !decoderCode}
+                      variant="default"
+                      size="lg"
+                      data-testid="button-refine-decoder"
+                    >
+                      {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                      Refine Decoder with Feedback
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        goToStep(findIndexByStep("step5_decoder"));
+                        toast({
+                          title: "View Decoder",
+                          description: "Check the decoder code in Step 5",
+                        });
+                      }}
+                      variant="outline"
+                      data-testid="button-view-decoder"
+                    >
+                      <Code2 className="w-4 h-4 mr-2" />
+                      View Decoder Code
+                    </Button>
                   </div>
                 </div>
 
