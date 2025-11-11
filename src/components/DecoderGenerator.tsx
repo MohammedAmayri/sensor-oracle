@@ -624,7 +624,8 @@ export const DecoderGenerator = () => {
         documentation,
         sensorSpecificPrompt: sensorSpecificPrompt || undefined,
       });
-      setRulesBlock(result.rulesBlock);
+      // Note: API returns RulesBlock (capital R, B) not rulesBlock
+      setRulesBlock(result.RulesBlock || result.rulesBlock);
       goToStep(findIndexByStep("step2_rules"), { markComplete: true });
       toast({
         title: "Step 1 complete",
@@ -647,7 +648,8 @@ export const DecoderGenerator = () => {
       const result = await callDecoderGenAPI("GenerateDraginoDecoder", {
         rulesBlock,
       });
-      setDecoderCode(result.decoderCode);
+      // Note: API may return DecoderCode (capital D, C) or decoderCode
+      setDecoderCode(result.DecoderCode || result.decoderCode);
       goToStep(findIndexByStep("step5_decoder"), { markComplete: true });
       toast({
         title: "Step 2 complete",
