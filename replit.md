@@ -127,9 +127,25 @@ src/
     - `VITE_MILESIGHT_BASE` & `VITE_MILESIGHT_KEY`: Milesight Azure Functions endpoint
     - `VITE_DECENTLAB_BASE` & `VITE_DECENTLAB_KEY`: Decentlab Azure Functions endpoint
     - `VITE_DRAGINO_BASE` & `VITE_DRAGINO_KEY`: Dragino Azure Functions endpoint
+    - `VITE_WATTECO_BASE` & `VITE_WATTECO_KEY`: Watteco Azure Functions endpoint
   - Accessed via `import.meta.env.VITE_*` in frontend
 
 ## Recent Changes
+- **2025-11-11:** Added Watteco manufacturer support to Decoder Generator
+  - Enabled Watteco option in manufacturer dropdown
+  - Implemented unique text-based input workflow (no PDF upload required)
+  - Users paste documentation directly as free text instead of uploading PDF
+  - Streamlined 2-step Watteco workflow:
+    - Step 1: Generate Device Profile (`/api/GenerateDeviceProfile`) - generates device profile from documentation
+    - Step 2: Generate Decoder (`/api/GenerateDecoderCode`) - generates C# decoder from device profile
+  - Editable device name and safe class name fields
+  - Extra hints field for optional guidance (e.g., "We only care about Binary Input cluster")
+  - Manufacturer-specific API credentials (`VITE_WATTECO_BASE`, `VITE_WATTECO_KEY`)
+  - Conditional UI rendering: text input for Watteco, PDF upload for other manufacturers
+  - Skips: PDF extraction, Examples Tables, Reconcile, Auto-Repair, and Feedback steps
+  - Direct flow: Paste Documentation → Device Profile → Decoder
+  - Reuses existing UI infrastructure and ContentDisplay component
+
 - **2025-11-10:** Added Dragino manufacturer support to Decoder Generator
   - Enabled Dragino option in manufacturer dropdown
   - Implemented streamlined 2-step Dragino workflow:
@@ -205,9 +221,11 @@ src/
     - **Milesight** (7-step process): Composite Spec → Rules → Examples → Reconcile → Decoder → Auto-Repair → Feedback
     - **Decentlab** (4-step process): Rules → Examples → Decoder → Feedback (with optional refinement)
     - **Dragino** (2-step process): Rules → Decoder
-    - Watteco, Enginko (coming soon)
+    - **Watteco** (2-step process, text-based): Paste Documentation → Device Profile → Decoder
+    - Enginko (coming soon)
   - Integrated with manufacturer-specific Azure Functions endpoints
-  - PDF upload with Azure Document Intelligence extraction
+  - PDF upload with Azure Document Intelligence extraction (Milesight, Decentlab, Dragino)
+  - Text input for direct documentation paste (Watteco)
   - Side-by-side markdown/HTML viewer for documentation review
   - Step-by-step UI with editable intermediate results
   - Conditional rendering shows only relevant steps per manufacturer
