@@ -282,7 +282,10 @@ export const DecoderGenerator = () => {
       throw new Error(`API credentials not configured for ${manufacturer}`);
     }
 
-    const response = await fetch(`${base}/api/${endpoint}?code=${key}`, {
+    // Remove trailing slash from base URL to prevent double slashes
+    const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+
+    const response = await fetch(`${cleanBase}/api/${endpoint}?code=${key}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -734,6 +737,9 @@ export const DecoderGenerator = () => {
         throw new Error("Refine API credentials not configured");
       }
 
+      // Remove trailing slash from base URL to prevent double slashes
+      const cleanRefineBase = refineBase.endsWith('/') ? refineBase.slice(0, -1) : refineBase;
+
       const requestBody: any = {
         manufacturer,
         documentation: documentation || undefined,
@@ -756,7 +762,7 @@ export const DecoderGenerator = () => {
         requestBody.safeClassName = safeClassName || undefined;
       }
 
-      const response = await fetch(`${refineBase}/api/RefineDecoder?code=${refineKey}`, {
+      const response = await fetch(`${cleanRefineBase}/api/RefineDecoder?code=${refineKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
