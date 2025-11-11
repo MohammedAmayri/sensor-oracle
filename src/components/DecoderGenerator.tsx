@@ -79,6 +79,11 @@ export const DecoderGenerator = () => {
   const [feedbackMarkdown, setFeedbackMarkdown] = useState("");
   const [sensorSpecificPrompt, setSensorSpecificPrompt] = useState("");
   
+  // Watteco-specific state
+  const [deviceProfile, setDeviceProfile] = useState("");
+  const [deviceName, setDeviceName] = useState("");
+  const [safeClassName, setSafeClassName] = useState("");
+  
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -95,6 +100,8 @@ export const DecoderGenerator = () => {
   const DECENTLAB_KEY = import.meta.env.VITE_DECENTLAB_KEY;
   const DRAGINO_BASE = import.meta.env.VITE_DRAGINO_BASE;
   const DRAGINO_KEY = import.meta.env.VITE_DRAGINO_KEY;
+  const WATTECO_BASE = import.meta.env.VITE_WATTECO_BASE;
+  const WATTECO_KEY = import.meta.env.VITE_WATTECO_KEY;
 
   // Get the appropriate base URL and key based on manufacturer
   const getApiCredentials = () => {
@@ -104,6 +111,8 @@ export const DecoderGenerator = () => {
       return { base: DECENTLAB_BASE, key: DECENTLAB_KEY };
     } else if (manufacturer === "dragino") {
       return { base: DRAGINO_BASE, key: DRAGINO_KEY };
+    } else if (manufacturer === "watteco") {
+      return { base: WATTECO_BASE, key: WATTECO_KEY };
     }
     return { base: "", key: "" };
   };
@@ -651,6 +660,60 @@ export const DecoderGenerator = () => {
     }
   };
 
+  // Watteco workflow functions
+  const runWattecoStep1GenerateProfile = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("GenerateDeviceProfile", {
+        deviceDocumentation: documentation,
+        extraHints: sensorSpecificPrompt || undefined,
+      });
+      setDeviceProfile(result.profile);
+      setDeviceName(result.deviceName);
+      setSafeClassName(result.safeClassName);
+      goToStep(findIndexByStep("step2_rules"), { markComplete: true });
+      toast({
+        title: "Step 1 complete",
+        description: "Watteco device profile generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 1 failed",
+        description: error instanceof Error ? error.message : "Could not generate Watteco device profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const runWattecoStep2GenerateDecoder = async () => {
+    setIsProcessing(true);
+    try {
+      const result = await callDecoderGenAPI("GenerateDecoderCode", {
+        deviceProfile,
+        deviceNameOverride: deviceName || undefined,
+        safeClassNameOverride: safeClassName || undefined,
+      });
+      setDecoderCode(result.decoderCode);
+      setDeviceName(result.deviceName);
+      setSafeClassName(result.safeClassName);
+      goToStep(findIndexByStep("step5_decoder"), { markComplete: true });
+      toast({
+        title: "Step 2 complete",
+        description: "Watteco decoder generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Step 2 failed",
+        description: error instanceof Error ? error.message : "Could not generate Watteco decoder",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const copyToClipboard = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -708,7 +771,7 @@ export const DecoderGenerator = () => {
                   <SelectItem value="milesight">Milesight</SelectItem>
                   <SelectItem value="decentlab">DecentLab</SelectItem>
                   <SelectItem value="dragino">Dragino</SelectItem>
-                  <SelectItem value="watteco" disabled>Watteco (Coming Soon)</SelectItem>
+                  <SelectItem value="watteco">Watteco</SelectItem>
                   <SelectItem value="enginko" disabled>Enginko (Coming Soon)</SelectItem>
                 </SelectContent>
               </Select>
@@ -732,45 +795,82 @@ export const DecoderGenerator = () => {
         <Card className="glass-card" data-testid="card-upload-doc">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Upload className="w-5 h-5" />
-              Upload Documentation ({manufacturer})
+              {manufacturer === "watteco" ? <FileText className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+              {manufacturer === "watteco" ? "Paste Documentation" : "Upload Documentation"} ({manufacturer})
             </CardTitle>
             <CardDescription>
-              Upload the device datasheet PDF for extraction
+              {manufacturer === "watteco" 
+                ? "Paste the device documentation text directly (Applicative Layer section, frame examples, etc.)"
+                : "Upload the device datasheet PDF for extraction"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="pdf-file">Select PDF File</Label>
-              <input
-                id="pdf-file"
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf"
-                onChange={handleFileSelect}
-                className="w-full"
-                data-testid="input-pdf-file"
-              />
-            </div>
+            {manufacturer === "watteco" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="doc-text">Device Documentation</Label>
+                  <Textarea
+                    id="doc-text"
+                    value={documentation}
+                    onChange={(e) => setDocumentation(e.target.value)}
+                    placeholder="Paste the Watteco device documentation here (Applicative Layer, frame examples, configuration, etc.)..."
+                    className="min-h-[400px] font-mono text-sm"
+                    data-testid="textarea-watteco-doc"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="extra-hints">Extra Hints (Optional)</Label>
+                  <Textarea
+                    id="extra-hints"
+                    value={sensorSpecificPrompt}
+                    onChange={(e) => setSensorSpecificPrompt(e.target.value)}
+                    placeholder="E.g., 'This device only uses inputs 1 and 2', 'We only care about Binary Input cluster'..."
+                    className="min-h-[100px]"
+                    data-testid="textarea-extra-hints"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-file">Select PDF File</Label>
+                  <input
+                    id="pdf-file"
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="w-full"
+                    data-testid="input-pdf-file"
+                  />
+                </div>
 
-            {selectedFile && (
-              <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm font-medium">Selected: {selectedFile.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  Size: {(selectedFile.size / 1024).toFixed(2)} KB
-                </p>
-              </div>
+                {selectedFile && (
+                  <div className="p-3 bg-muted rounded-md">
+                    <p className="text-sm font-medium">Selected: {selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Size: {(selectedFile.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="flex gap-2">
               <Button
-                onClick={uploadAndExtract}
-                disabled={!selectedFile}
+                onClick={manufacturer === "watteco" ? runWattecoStep1GenerateProfile : uploadAndExtract}
+                disabled={manufacturer === "watteco" ? !documentation : !selectedFile}
                 className="flex-1"
                 data-testid="button-upload-extract"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                Upload and Extract
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : manufacturer === "watteco" ? (
+                  <Code2 className="w-4 h-4 mr-2" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                {manufacturer === "watteco" ? "Generate Device Profile" : "Upload and Extract"}
               </Button>
               <Button
                 onClick={() => goToStep(findIndexByStep("select_manufacturer"))}
@@ -991,39 +1091,77 @@ export const DecoderGenerator = () => {
             </Card>
           )}
 
-          {/* Step 2: Rules Block */}
+          {/* Step 2: Rules Block / Device Profile */}
           {(step === "step2_rules" || step === "step3_examples" || step === "step4_reconcile" || 
             step === "step5_decoder" || step === "step6_repair" || step === "step7_feedback") && (
             <Card className="glass-card" data-testid="card-step2">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>Step 2: Rules Block</span>
+                  <span>{manufacturer === "watteco" ? "Step 1: Device Profile" : "Step 2: Rules Block"}</span>
                   {step !== "step2_rules" && <Check className="w-5 h-5 text-green-500" />}
                 </CardTitle>
               </CardHeader>
               {step === "step2_rules" && (
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sensor-prompt">Sensor-Specific Prompt (Optional)</Label>
-                    <Textarea
-                      id="sensor-prompt"
-                      value={sensorSpecificPrompt}
-                      onChange={(e) => setSensorSpecificPrompt(e.target.value)}
-                      placeholder="Add any specific requirements or hints..."
-                      className="min-h-[100px]"
-                      data-testid="textarea-sensor-prompt"
-                    />
-                  </div>
-                  <ContentDisplay
-                    content={rulesBlock}
-                    onChange={setRulesBlock}
-                    contentType="rules"
-                    placeholder="Rules block will appear here after generation..."
-                    dataTestId="content-rules-block"
-                  />
+                  {manufacturer === "watteco" ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="device-name">Device Name</Label>
+                        <input
+                          id="device-name"
+                          type="text"
+                          value={deviceName}
+                          onChange={(e) => setDeviceName(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="Device name..."
+                          data-testid="input-device-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="safe-class-name">Safe Class Name</Label>
+                        <input
+                          id="safe-class-name"
+                          type="text"
+                          value={safeClassName}
+                          onChange={(e) => setSafeClassName(e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md"
+                          placeholder="Safe class name..."
+                          data-testid="input-safe-class-name"
+                        />
+                      </div>
+                      <ContentDisplay
+                        content={deviceProfile}
+                        onChange={setDeviceProfile}
+                        contentType="markdown"
+                        placeholder="Device profile will appear here after generation..."
+                        dataTestId="content-device-profile"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="sensor-prompt">Sensor-Specific Prompt (Optional)</Label>
+                        <Textarea
+                          id="sensor-prompt"
+                          value={sensorSpecificPrompt}
+                          onChange={(e) => setSensorSpecificPrompt(e.target.value)}
+                          placeholder="Add any specific requirements or hints..."
+                          className="min-h-[100px]"
+                          data-testid="textarea-sensor-prompt"
+                        />
+                      </div>
+                      <ContentDisplay
+                        content={rulesBlock}
+                        onChange={setRulesBlock}
+                        contentType="rules"
+                        placeholder="Rules block will appear here after generation..."
+                        dataTestId="content-rules-block"
+                      />
+                    </>
+                  )}
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => copyToClipboard(rulesBlock, "Rules Block")}
+                      onClick={() => copyToClipboard(manufacturer === "watteco" ? deviceProfile : rulesBlock, manufacturer === "watteco" ? "Device Profile" : "Rules Block")}
                       variant="outline"
                       size="sm"
                     >
@@ -1047,13 +1185,15 @@ export const DecoderGenerator = () => {
                           ? runDecentlabStep3ExtractExamples 
                           : manufacturer === "dragino"
                             ? runDraginoStep2GenerateDecoder
-                            : runStep3ExtractExamplesTables
+                            : manufacturer === "watteco"
+                              ? runWattecoStep2GenerateDecoder
+                              : runStep3ExtractExamplesTables
                       }
                       disabled={isProcessing}
                       data-testid="button-next-step3"
                     >
                       {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                      {manufacturer === "dragino" ? "Next: Generate Decoder" : "Next: Extract Examples"}
+                      {manufacturer === "dragino" || manufacturer === "watteco" ? "Next: Generate Decoder" : "Next: Extract Examples"}
                     </Button>
                   </div>
                 </CardContent>
@@ -1061,8 +1201,8 @@ export const DecoderGenerator = () => {
             </Card>
           )}
 
-          {/* Step 3: Examples Tables (not for Dragino) */}
-          {manufacturer !== "dragino" && (step === "step3_examples" || step === "step4_reconcile" || step === "step5_decoder" || 
+          {/* Step 3: Examples Tables (not for Dragino or Watteco) */}
+          {manufacturer !== "dragino" && manufacturer !== "watteco" && (step === "step3_examples" || step === "step4_reconcile" || step === "step5_decoder" || 
             step === "step6_repair" || step === "step7_feedback") && (
             <Card className="glass-card" data-testid="card-step3">
               <CardHeader>
