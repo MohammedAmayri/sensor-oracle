@@ -88,7 +88,41 @@ export const ContentDisplay = ({
 
           {contentType === "markdown" && (
             <div className="p-4 prose prose-sm dark:prose-invert max-w-none" data-testid={dataTestId}>
-              <ReactMarkdown rehypePlugins={[rehypeRaw, rehypeSanitize]}>
+              <ReactMarkdown 
+                rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                components={{
+                  code(props: any) {
+                    const { node, inline, className, children, ...rest } = props;
+                    const match = /language-(\w+)/.exec(className || '');
+                    const codeLanguage = match ? match[1] : 'csharp';
+                    
+                    // Block code (triple backticks) - use syntax highlighting
+                    if (!inline) {
+                      return (
+                        <SyntaxHighlighter
+                          style={vscDarkPlus as any}
+                          language={codeLanguage}
+                          PreTag="div"
+                          customStyle={{
+                            margin: '1em 0',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      );
+                    }
+                    
+                    // Inline code (single backticks) - simple code tag
+                    return (
+                      <code className={className} {...rest}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
                 {content}
               </ReactMarkdown>
             </div>
