@@ -79,6 +79,7 @@ export const DecoderGenerator = () => {
   const [feedbackMarkdown, setFeedbackMarkdown] = useState("");
   const [sensorSpecificPrompt, setSensorSpecificPrompt] = useState("");
   const [refinementFeedback, setRefinementFeedback] = useState("");
+  const [refinementNotes, setRefinementNotes] = useState("");
   
   // Watteco-specific state
   const [deviceProfile, setDeviceProfile] = useState("");
@@ -778,11 +779,15 @@ export const DecoderGenerator = () => {
 
       const result = await response.json();
       // Note: API returns RefinedDecoderCode (capital R, D, C) and RefinementNotes (capital R, N)
-      setDecoderCode(result.RefinedDecoderCode || result.refinedDecoderCode);
+      const refinedCode = result.RefinedDecoderCode || result.refinedDecoderCode;
+      const notes = result.RefinementNotes || result.refinementNotes || "";
+      
+      setDecoderCode(refinedCode);
+      setRefinementNotes(notes);
 
       toast({
         title: "Decoder refined successfully",
-        description: result.RefinementNotes || result.refinementNotes || "Your feedback has been incorporated into the decoder",
+        description: "View the refined decoder code and notes below",
       });
     } catch (error) {
       toast({
@@ -824,6 +829,11 @@ export const DecoderGenerator = () => {
     setDecoderCode("");
     setFeedbackMarkdown("");
     setSensorSpecificPrompt("");
+    setRefinementFeedback("");
+    setRefinementNotes("");
+    setDeviceProfile("");
+    setDeviceName("");
+    setSafeClassName("");
     stopPolling();
   };
 
@@ -1385,6 +1395,24 @@ export const DecoderGenerator = () => {
                     placeholder="C# decoder code will appear here after generation..."
                     dataTestId="content-decoder-code"
                   />
+
+                  {/* Refinement Notes Section */}
+                  {refinementNotes && (
+                    <div className="border-t pt-4 space-y-2">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        <Check className="w-4 h-4 text-green-500" />
+                        Refinement Notes:
+                      </Label>
+                      <ContentDisplay
+                        content={refinementNotes}
+                        contentType="markdown"
+                        readonly
+                        previewOnly
+                        placeholder="Refinement notes will appear here..."
+                        dataTestId="content-refinement-notes"
+                      />
+                    </div>
+                  )}
 
                   {/* Feedback input for Dragino and Watteco (they don't have Step 7) */}
                   {(manufacturer === "dragino" || manufacturer === "watteco") && (
