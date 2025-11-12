@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +14,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import { ContentDisplay } from "@/components/ContentDisplay";
 
-type Manufacturer = "milesight" | "decentlab" | "dragino" | "watteco" | "enginko";
+type Manufacturer = "milesight" | "decentlab" | "dragino" | "watteco" | "generic" | "enginko";
 
 type WorkflowStep = 
   | "select_manufacturer"
@@ -86,6 +87,11 @@ export const DecoderGenerator = () => {
   const [deviceName, setDeviceName] = useState("");
   const [safeClassName, setSafeClassName] = useState("");
   
+  // Generic-specific state
+  const [deviceFormat, setDeviceFormat] = useState("");
+  const [manualExamples, setManualExamples] = useState("");
+  const [inputMode, setInputMode] = useState<"pdf" | "text">("pdf");
+  
   // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -104,6 +110,8 @@ export const DecoderGenerator = () => {
   const DRAGINO_KEY = import.meta.env.VITE_DRAGINO_KEY;
   const WATTECO_BASE = import.meta.env.VITE_WATTECO_BASE;
   const WATTECO_KEY = import.meta.env.VITE_WATTECO_KEY;
+  const GENERIC_BASE = import.meta.env.VITE_GENERIC_BASE;
+  const GENERIC_KEY = import.meta.env.VITE_GENERIC_KEY;
 
   // Get the appropriate base URL and key based on manufacturer
   const getApiCredentials = () => {
@@ -115,6 +123,8 @@ export const DecoderGenerator = () => {
       return { base: DRAGINO_BASE, key: DRAGINO_KEY };
     } else if (manufacturer === "watteco") {
       return { base: WATTECO_BASE, key: WATTECO_KEY };
+    } else if (manufacturer === "generic") {
+      return { base: GENERIC_BASE, key: GENERIC_KEY };
     }
     return { base: "", key: "" };
   };
@@ -721,6 +731,91 @@ export const DecoderGenerator = () => {
     }
   };
 
+  // Generic workflow function
+  const callGenericWorkflow = async () => {
+    if (!documentation) {
+      toast({
+        title: "Documentation required",
+        description: "Please provide device documentation via PDF or text input",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const { base, key } = getApiCredentials();
+      if (!base || !key) {
+        throw new Error("Generic API credentials not configured");
+      }
+
+      // Remove trailing slash from base URL
+      const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+
+      // Determine if we're sending JSON or plain text
+      const hasOptionalFields = deviceName || sensorSpecificPrompt || manualExamples;
+      
+      let response;
+      if (hasOptionalFields) {
+        // Send JSON with optional fields
+        const requestBody = {
+          deviceName: deviceName || undefined,
+          sensorSpecificPrompt: sensorSpecificPrompt || undefined,
+          documentation,
+          manualExamples: manualExamples || undefined,
+        };
+
+        response = await fetch(`${cleanBase}/api/DecoderGenerator?code=${key}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+      } else {
+        // Send plain text documentation only
+        response = await fetch(`${cleanBase}/api/DecoderGenerator?code=${key}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain",
+          },
+          body: documentation,
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API returned ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Populate all state from the single API response
+      setDeviceFormat(result.deviceFormat || "");
+      setCompositeSpec(result.compositeSpec || "");
+      setRulesBlock(result.rulesBlock || "");
+      setExamplesTablesMd(result.examplesTablesMarkdown || "");
+      setDecoderCode(result.decoderCode || "");
+      setFeedbackMarkdown(result.decoderFeedback || "");
+
+      // Advance to first content step
+      goToStep(findIndexByStep("step1_composite"), { markComplete: true });
+
+      toast({
+        title: "Generic decoder generated",
+        description: "All workflow outputs generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Generic workflow failed",
+        description: error instanceof Error ? error.message : "Could not generate decoder",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const refineDecoderWithFeedback = async () => {
     if (!decoderCode) {
       toast({
@@ -763,6 +858,13 @@ export const DecoderGenerator = () => {
         requestBody.deviceProfile = deviceProfile || undefined;
         requestBody.deviceName = deviceName || undefined;
         requestBody.safeClassName = safeClassName || undefined;
+      } else if (manufacturer === "generic") {
+        requestBody.deviceFormat = deviceFormat || undefined;
+        requestBody.compositeSpec = compositeSpec || undefined;
+        requestBody.rulesBlock = rulesBlock || undefined;
+        requestBody.examplesMarkdown = examplesTablesMd || undefined;
+        requestBody.manualExamples = manualExamples || undefined;
+        requestBody.deviceName = deviceName || undefined;
       }
 
       const response = await fetch(`${cleanRefineBase}/api/RefineDecoder?code=${refineKey}`, {
@@ -834,6 +936,9 @@ export const DecoderGenerator = () => {
     setDeviceProfile("");
     setDeviceName("");
     setSafeClassName("");
+    setDeviceFormat("");
+    setManualExamples("");
+    setInputMode("pdf");
     stopPolling();
   };
 
@@ -863,6 +968,7 @@ export const DecoderGenerator = () => {
                   <SelectItem value="decentlab">DecentLab</SelectItem>
                   <SelectItem value="dragino">Dragino</SelectItem>
                   <SelectItem value="watteco">Watteco</SelectItem>
+                  <SelectItem value="generic">Generic</SelectItem>
                   <SelectItem value="enginko" disabled>Enginko (Coming Soon)</SelectItem>
                 </SelectContent>
               </Select>
@@ -886,17 +992,105 @@ export const DecoderGenerator = () => {
         <Card className="glass-card" data-testid="card-upload-doc">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {manufacturer === "watteco" ? <FileText className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
-              {manufacturer === "watteco" ? "Paste Documentation" : "Upload Documentation"} ({manufacturer})
+              {manufacturer === "generic" ? <Code2 className="w-5 h-5" /> : manufacturer === "watteco" ? <FileText className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+              {manufacturer === "generic" ? "Configure Decoder Generation" : manufacturer === "watteco" ? "Paste Documentation" : "Upload Documentation"} ({manufacturer})
             </CardTitle>
             <CardDescription>
-              {manufacturer === "watteco" 
-                ? "Paste the device documentation text directly (Applicative Layer section, frame examples, etc.)"
-                : "Upload the device datasheet PDF for extraction"}
+              {manufacturer === "generic"
+                ? "Provide device documentation and optional metadata for comprehensive decoder generation"
+                : manufacturer === "watteco" 
+                  ? "Paste the device documentation text directly (Applicative Layer section, frame examples, etc.)"
+                  : "Upload the device datasheet PDF for extraction"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {manufacturer === "watteco" ? (
+            {manufacturer === "generic" ? (
+              <>
+                <Tabs defaultValue={inputMode} onValueChange={(v) => setInputMode(v as "pdf" | "text")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="pdf" data-testid="tab-pdf">PDF Upload</TabsTrigger>
+                    <TabsTrigger value="text" data-testid="tab-text">Paste Text</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="pdf" className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pdf-file-generic">Select PDF File</Label>
+                      <input
+                        id="pdf-file-generic"
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileSelect}
+                        className="w-full"
+                        data-testid="input-pdf-file-generic"
+                      />
+                    </div>
+                    {selectedFile && (
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-sm font-medium">Selected: {selectedFile.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Size: {(selectedFile.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="text" className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="doc-text-generic">Device Documentation</Label>
+                      <Textarea
+                        id="doc-text-generic"
+                        value={documentation}
+                        onChange={(e) => setDocumentation(e.target.value)}
+                        placeholder="Paste the full PDF text / markdown / HTML for the device here..."
+                        className="min-h-[300px] font-mono text-sm"
+                        data-testid="textarea-generic-doc"
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
+                <div className="space-y-2 border-t pt-4">
+                  <Label htmlFor="device-name" className="text-sm font-medium">Optional Metadata</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Provide additional context to improve decoder generation</p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="device-name">Device Name (Optional)</Label>
+                    <Input
+                      id="device-name"
+                      value={deviceName}
+                      onChange={(e) => setDeviceName(e.target.value)}
+                      placeholder="e.g., MCF-LW12CO2"
+                      data-testid="input-device-name"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="sensor-prompt">Sensor-Specific Prompt (Optional)</Label>
+                    <Textarea
+                      id="sensor-prompt"
+                      value={sensorSpecificPrompt}
+                      onChange={(e) => setSensorSpecificPrompt(e.target.value)}
+                      placeholder="e.g., LoRaWAN sensor with CO2 (ppm), temperature (°C), humidity (%RH). Battery in volts."
+                      className="min-h-[60px]"
+                      data-testid="textarea-sensor-prompt"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-examples">Manual Examples (Optional)</Label>
+                    <Textarea
+                      id="manual-examples"
+                      value={manualExamples}
+                      onChange={(e) => setManualExamples(e.target.value)}
+                      placeholder="Example payloads with human interpretation, if you have them..."
+                      className="min-h-[60px]"
+                      data-testid="textarea-manual-examples"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : manufacturer === "watteco" ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="doc-text">Device Documentation</Label>
@@ -949,19 +1143,33 @@ export const DecoderGenerator = () => {
 
             <div className="flex gap-2">
               <Button
-                onClick={manufacturer === "watteco" ? runWattecoStep1GenerateProfile : uploadAndExtract}
-                disabled={manufacturer === "watteco" ? !documentation : !selectedFile}
+                onClick={() => {
+                  if (manufacturer === "generic") {
+                    if (inputMode === "pdf") {
+                      uploadAndExtract();
+                    } else {
+                      callGenericWorkflow();
+                    }
+                  } else if (manufacturer === "watteco") {
+                    runWattecoStep1GenerateProfile();
+                  } else {
+                    uploadAndExtract();
+                  }
+                }}
+                disabled={manufacturer === "generic" ? (inputMode === "pdf" ? !selectedFile : !documentation) : manufacturer === "watteco" ? !documentation : !selectedFile}
                 className="flex-1"
                 data-testid="button-upload-extract"
               >
                 {isProcessing ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : manufacturer === "generic" ? (
+                  <Code2 className="w-4 h-4 mr-2" />
                 ) : manufacturer === "watteco" ? (
                   <Code2 className="w-4 h-4 mr-2" />
                 ) : (
                   <Upload className="w-4 h-4 mr-2" />
                 )}
-                {manufacturer === "watteco" ? "Generate Device Profile" : "Upload and Extract"}
+                {manufacturer === "generic" ? (inputMode === "pdf" ? "Upload and Extract" : "Generate Decoder") : manufacturer === "watteco" ? "Generate Device Profile" : "Upload and Extract"}
               </Button>
               <Button
                 onClick={() => goToStep(findIndexByStep("select_manufacturer"))}
@@ -1036,11 +1244,13 @@ export const DecoderGenerator = () => {
             <div className="flex gap-2">
               <Button
                 onClick={
-                  manufacturer === "decentlab" 
-                    ? runDecentlabStep1GenerateRules 
-                    : manufacturer === "dragino"
-                      ? runDraginoStep1GenerateRules
-                      : runStep1GenerateCompositeSpec
+                  manufacturer === "generic"
+                    ? callGenericWorkflow
+                    : manufacturer === "decentlab" 
+                      ? runDecentlabStep1GenerateRules 
+                      : manufacturer === "dragino"
+                        ? runDraginoStep1GenerateRules
+                        : runStep1GenerateCompositeSpec
                 }
                 disabled={isProcessing}
                 className="flex-1"
@@ -1051,11 +1261,13 @@ export const DecoderGenerator = () => {
                 ) : (
                   <Code2 className="w-4 h-4 mr-2" />
                 )}
-                {manufacturer === "decentlab" 
-                  ? "Start Decentlab Generation" 
-                  : manufacturer === "dragino"
-                    ? "Start Dragino Generation"
-                    : "Start Generation Process"}
+                {manufacturer === "generic"
+                  ? "Generate Decoder"
+                  : manufacturer === "decentlab" 
+                    ? "Start Decentlab Generation" 
+                    : manufacturer === "dragino"
+                      ? "Start Dragino Generation"
+                      : "Start Generation Process"}
               </Button>
               <Button
                 onClick={() => goToStep(findIndexByStep("upload_doc"))}
@@ -1141,17 +1353,26 @@ export const DecoderGenerator = () => {
             </CardContent>
           </Card>
 
-          {/* Step 1: Composite Spec (Milesight only) */}
-          {manufacturer === "milesight" && (
+          {/* Step 1: Composite Spec / Device Format (Milesight & Generic) */}
+          {(manufacturer === "milesight" || manufacturer === "generic") && (step === "step1_composite" || step === "step2_rules" || step === "step3_examples" || 
+            step === "step4_reconcile" || step === "step5_decoder" || step === "step6_repair" || step === "step7_feedback") && (
             <Card className="glass-card" data-testid="card-step1">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>Step 1: Composite Spec</span>
+                  <span>{manufacturer === "generic" ? "Step 1: Device Format & Composite Spec" : "Step 1: Composite Spec"}</span>
                   {step !== "step1_composite" && <Check className="w-5 h-5 text-green-500" />}
                 </CardTitle>
               </CardHeader>
               {step === "step1_composite" && (
                 <CardContent className="space-y-4">
+                  {manufacturer === "generic" && deviceFormat && (
+                    <div className="space-y-2 border-b pb-4 mb-4">
+                      <Label className="text-sm font-semibold">Device Format</Label>
+                      <div className="p-3 bg-muted rounded-md">
+                        <p className="text-sm font-mono">{deviceFormat}</p>
+                      </div>
+                    </div>
+                  )}
                   <ContentDisplay
                     content={compositeSpec}
                     onChange={setCompositeSpec}
@@ -1168,14 +1389,16 @@ export const DecoderGenerator = () => {
                       <Copy className="w-3 h-3 mr-2" />
                       Copy
                     </Button>
-                    <Button
-                      onClick={runStep2GenerateRulesBlock}
-                      disabled={isProcessing}
-                      data-testid="button-next-step2"
-                    >
-                      {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
-                      Next: Generate Rules Block
-                    </Button>
+                    {manufacturer === "milesight" && (
+                      <Button
+                        onClick={runStep2GenerateRulesBlock}
+                        disabled={isProcessing}
+                        data-testid="button-next-step2"
+                      >
+                        {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRight className="w-4 h-4 mr-2" />}
+                        Next: Generate Rules Block
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               )}
@@ -1293,7 +1516,7 @@ export const DecoderGenerator = () => {
           )}
 
           {/* Step 3: Examples Tables (not for Dragino or Watteco) */}
-          {manufacturer !== "dragino" && manufacturer !== "watteco" && (step === "step3_examples" || step === "step4_reconcile" || step === "step5_decoder" || 
+          {(manufacturer === "milesight" || manufacturer === "decentlab" || manufacturer === "generic") && (step === "step3_examples" || step === "step4_reconcile" || step === "step5_decoder" || 
             step === "step6_repair" || step === "step7_feedback") && (
             <Card className="glass-card" data-testid="card-step3">
               <CardHeader>
@@ -1414,8 +1637,23 @@ export const DecoderGenerator = () => {
                     </div>
                   )}
 
-                  {/* Feedback input for Dragino and Watteco (they don't have Step 7) */}
-                  {(manufacturer === "dragino" || manufacturer === "watteco") && (
+                  {/* AI-generated feedback for Generic */}
+                  {manufacturer === "generic" && feedbackMarkdown && (
+                    <div className="border-t pt-4 space-y-2">
+                      <Label className="text-sm font-semibold">AI-Generated Decoder Feedback</Label>
+                      <ContentDisplay
+                        content={feedbackMarkdown}
+                        contentType="markdown"
+                        readonly
+                        previewOnly
+                        placeholder="Decoder feedback will appear here..."
+                        dataTestId="content-decoder-feedback-generic"
+                      />
+                    </div>
+                  )}
+
+                  {/* Feedback input for Dragino, Watteco, and Generic (they don't have Step 7) */}
+                  {(manufacturer === "dragino" || manufacturer === "watteco" || manufacturer === "generic") && (
                     <div className="border-t pt-4 space-y-2">
                       <Label htmlFor="refinement-notes" className="text-sm font-semibold">
                         Refinement Notes (Optional):
@@ -1453,7 +1691,7 @@ export const DecoderGenerator = () => {
                       </Button>
                     )}
 
-                    {(manufacturer === "dragino" || manufacturer === "watteco") ? (
+                    {(manufacturer === "dragino" || manufacturer === "watteco" || manufacturer === "generic") ? (
                       <Button
                         onClick={refineDecoderWithFeedback}
                         disabled={isProcessing || !decoderCode}
