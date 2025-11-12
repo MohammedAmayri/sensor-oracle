@@ -6,7 +6,9 @@ The Sensor Whisperer (sensor-oracle) is a React-based web application designed f
 The project's vision is to provide a comprehensive tool for managing IoT device data and accelerating the development of device decoders, thereby reducing manual effort and potential errors in IoT deployments. It targets a market need for efficient handling of diverse IoT device ecosystems.
 
 ## Recent Changes
-- **2025-11-12:** Fixed refinement feedback loop for Milesight and Decentlab workflows. Added refinement notes display section to Step 7, ensuring users can see AI's explanation after clicking "Refine Decoder with Feedback" - matching the functionality available in Step 5 for Dragino and Watteco.
+- **2025-11-12:** 
+  - Fixed refinement feedback loop for Milesight and Decentlab workflows. Added refinement notes display section to Step 7, ensuring users can see AI's explanation after clicking "Refine Decoder with Feedback" - matching the functionality available in Step 5 for Dragino and Watteco.
+  - **Added complete Generic manufacturer workflow** with dual-input mode (PDF upload via Azure extraction OR direct text paste), single-call API integration returning all workflow outputs (deviceFormat, compositeSpec, rulesBlock, examplesTablesMarkdown, decoderCode, decoderFeedback), and full integration with universal refinement system. Generic workflow displays outputs progressively through steps 1-5 with refinement capability.
 
 ## User Preferences
 I want iterative development. Ask before making major changes. I prefer detailed explanations. Do not make changes to the folder Z. Do not make changes to the file Y.
@@ -38,10 +40,16 @@ The application uses `shadcn/ui` components built on `Radix UI` primitives, styl
     *   Comprehensive error handling with retry logic for SAS URL expiry.
     *   State machine manages workflow progression.
 4.  **Manufacturer-specific Decoder Generator:**
-    *   Supports Milesight (7 steps), Decentlab (4 steps), Dragino (2 steps), and Watteco (2 steps, text-based input) workflows.
+    *   Supports five manufacturer workflows:
+        *   **Milesight** (7 steps): Full workflow with composite spec, rules, examples, reconciliation, decoder, repair, and feedback
+        *   **Decentlab** (4 steps): Streamlined workflow with composite spec, rules, examples, and static feedback
+        *   **Dragino** (2 steps): Quick workflow with device profile and decoder code
+        *   **Watteco** (2 steps): Text-based input with device profile and decoder code
+        *   **Generic** (5 steps): Dual-input mode (PDF upload OR text paste) with single-call API returning device format, composite spec, rules block, examples tables, decoder code, and AI-generated feedback
     *   Integrates with manufacturer-specific Azure Functions endpoints.
-    *   Includes a "Refine Decoder with Feedback" mechanism across manufacturers, allowing AI-driven refinement of generated decoder code based on user input.
+    *   Includes a "Refine Decoder with Feedback" mechanism across all manufacturers, allowing AI-driven refinement of generated decoder code based on user input.
     *   Features a `ContentDisplay` component for unified viewing/editing with syntax highlighting (C#), Markdown rendering, and structured rules display.
+    *   Generic workflow supports optional metadata fields (deviceName, sensorSpecificPrompt, manualExamples) for enhanced decoder generation.
 
 ### System Design Choices
 The application is structured as a frontend-only React application with backend interactions managed via Azure Functions. It leverages shared utility modules for Azure-related operations. Environment variables are used for API keys and base URLs, including manufacturer-specific credentials for enhanced security and flexibility. The development environment is configured for Replit, using Vite for fast development and building.
@@ -55,6 +63,7 @@ The application requires the following environment secrets (all prefixed with `V
   - `VITE_DECENTLAB_BASE` & `VITE_DECENTLAB_KEY`: Decentlab decoder generation
   - `VITE_DRAGINO_BASE` & `VITE_DRAGINO_KEY`: Dragino decoder generation
   - `VITE_WATTECO_BASE` & `VITE_WATTECO_KEY`: Watteco decoder generation
+  - `VITE_GENERIC_BASE` & `VITE_GENERIC_KEY`: Generic decoder generation (dual-input mode)
 - **Universal Decoder Refinement**:
   - `VITE_REFINE_BASE` & `VITE_REFINE_KEY`: Cross-manufacturer decoder refinement with AI feedback
 
@@ -64,8 +73,8 @@ The application requires the following environment secrets (all prefixed with `V
     *   IoT device model discovery (AI-driven).
     *   PDF document intelligence extraction.
     *   Decoder code generation (C#, Python, JavaScript).
-    *   Manufacturer-specific decoder generation (Milesight, Decentlab, Dragino, Watteco).
-    *   Decoder refinement with feedback.
+    *   Manufacturer-specific decoder generation (Milesight, Decentlab, Dragino, Watteco, Generic).
+    *   Decoder refinement with feedback (universal across all manufacturers).
 *   **Azure Blob Storage:** For storing and retrieving PDF evidence, utilizing Shared Access Signature (SAS) URLs for secure access.
 *   **Vite:** Build tool.
 *   **React:** Frontend framework.
