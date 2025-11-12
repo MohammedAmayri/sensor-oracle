@@ -777,11 +777,12 @@ export const DecoderGenerator = () => {
       }
 
       const result = await response.json();
-      setDecoderCode(result.refinedDecoderCode);
+      // Note: API returns RefinedDecoderCode (capital R, D, C) and RefinementNotes (capital R, N)
+      setDecoderCode(result.RefinedDecoderCode || result.refinedDecoderCode);
 
       toast({
         title: "Decoder refined successfully",
-        description: result.refinementNotes || "Your feedback has been incorporated into the decoder",
+        description: result.RefinementNotes || result.refinementNotes || "Your feedback has been incorporated into the decoder",
       });
     } catch (error) {
       toast({
