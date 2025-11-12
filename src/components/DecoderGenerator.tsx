@@ -1556,6 +1556,24 @@ export const DecoderGenerator = () => {
                   />
                 </div>
 
+                {/* Refinement Notes Section - Shows after refinement */}
+                {refinementNotes && (
+                  <div className="border-t pt-4 space-y-2 bg-green-50 dark:bg-green-950 p-4 rounded-md">
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Refinement Notes:
+                    </Label>
+                    <ContentDisplay
+                      content={refinementNotes}
+                      contentType="markdown"
+                      readonly
+                      previewOnly
+                      placeholder="Refinement notes will appear here..."
+                      dataTestId="content-refinement-notes-step7"
+                    />
+                  </div>
+                )}
+
                 <div className="bg-muted/50 p-4 rounded-md">
                   <p className="text-sm text-muted-foreground mb-3">
                     <strong>Iterate on the decoder:</strong> Use the universal refinement to improve your decoder based on feedback.
