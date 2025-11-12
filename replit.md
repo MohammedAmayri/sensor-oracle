@@ -5,6 +5,9 @@ The Sensor Whisperer (sensor-oracle) is a React-based web application designed f
 
 The project's vision is to provide a comprehensive tool for managing IoT device data and accelerating the development of device decoders, thereby reducing manual effort and potential errors in IoT deployments. It targets a market need for efficient handling of diverse IoT device ecosystems.
 
+## Recent Changes
+- **2025-11-12:** Fixed refinement feedback loop for Milesight and Decentlab workflows. Added refinement notes display section to Step 7, ensuring users can see AI's explanation after clicking "Refine Decoder with Feedback" - matching the functionality available in Step 5 for Dragino and Watteco.
+
 ## User Preferences
 I want iterative development. Ask before making major changes. I prefer detailed explanations. Do not make changes to the folder Z. Do not make changes to the file Y.
 
