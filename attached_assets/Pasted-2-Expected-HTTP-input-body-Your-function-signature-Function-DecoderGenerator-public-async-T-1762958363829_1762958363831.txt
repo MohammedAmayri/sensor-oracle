@@ -1,0 +1,144 @@
+2. Expected HTTP input body
+
+Your function signature:
+
+[Function("DecoderGenerator")]
+public async Task<HttpResponseData> Run(
+    [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
+    CancellationToken cancellationToken)
+
+2.1. Standard JSON input (recommended)
+
+Content-Type: application/json
+Method: POST
+URL: https://<your-func-app>.azurewebsites.net/api/DecoderGenerator?code=<FUNCTION_KEY>
+
+Request body:
+
+{
+  "deviceName": "MCF-LW12CO2",
+  "sensorSpecificPrompt": "LoRaWAN sensor with CO2 (ppm), temperature (°C), humidity (%RH). Battery in volts.",
+  "documentation": "Paste the full PDF text / markdown / HTML for the device here...",
+  "manualExamples": "Example payloads with human interpretation, if you have them."
+}
+
+
+Notes:
+
+All properties are optional except documentation.
+
+Property names are case-insensitive thanks to PropertyNameCaseInsensitive = true.
+
+If you don’t need deviceName, sensorSpecificPrompt, or manualExamples, you can omit them or set them to null.
+
+2.2. Raw documentation body (no JSON)
+
+Because of this block:
+
+try
+{
+    payload = JsonSerializer.Deserialize<DecoderRequest>(...);
+}
+catch
+{
+    // Not valid JSON -> treat body as plain documentation
+    payload = new DecoderRequest
+    {
+        Documentation = requestBody
+    };
+}
+
+
+You can also send:
+
+Content-Type: text/plain (or nothing; Azure will still give you the body)
+
+Body: just the docs string.
+
+Example:
+
+# Device X – Uplink Frame Documentation
+
+All uplink frames are 11 bytes long. Byte 0 = Code, Byte 1 = Status...
+...
+
+
+The function will treat this as:
+
+{
+  "deviceName": null,
+  "sensorSpecificPrompt": null,
+  "documentation": "<your text>",
+  "manualExamples": null
+}
+
+3. Expected HTTP responses
+3.1. Success (HTTP 200)
+
+On success:
+
+{
+  "deviceFormat": "tlv",               // or "fixed_framecode" / "fixed_no_code" / "hybrid"
+  "compositeSpec": "COMPOSITE_TLVS\n- channel=03 type=67 bytes=2\n  - byte 0-1: Temperature,...",
+  "rulesBlock": "# DECODING RULES (SomeDevice)\n# ===== BASIC INFORMATION =====\nMAP: ...",
+  "examplesTablesMarkdown": "Basic Information – Example\n```markdown\n| Channel | Type | Value | ...",
+  "decoderCode": "using System;\nusing Microsoft.Azure.Functions.Worker;\n...\npublic class DecoderSomeDevice { ... }",
+  "decoderFeedback": "Overall correctness: 92%\n\nIssues\n- ...\n\nProposed fixes\nnow you have:\n```csharp\n...\n```"
+}
+
+
+A few remarks:
+
+deviceFormat is the normalized result of the classifier (FORMAT=tlv → "tlv").
+
+compositeSpec is the COMPOSITE_TLVS / FRAMES block exactly as produced.
+
+rulesBlock is the reconciled rules after examples/composite pass.
+
+examplesTablesMarkdown is the markdown tables (Basic + Sensor).
+
+decoderCode is a single C# file as a plain string (no fences).
+
+decoderFeedback is markdown text with score + surgical patches.
+
+You can store all of this in a DB/file storage and later:
+
+Show rulesBlock and decoderCode in a UI.
+
+Run decoderCode through a compile+deploy pipeline.
+
+3.2. Missing or invalid body → 400
+
+If body is empty or payload ends up null:
+
+{
+  "error": "Invalid or missing JSON body. Expected DecoderRequest JSON."
+}
+
+
+If docs string is missing/empty:
+
+{
+  "error": "Documentation is required."
+}
+
+
+If OPENAI_API_KEY is not set in the environment:
+
+{
+  "error": "OPENAI_API_KEY environment variable is not set."
+}
+
+
+(All with HTTP status 400 BadRequest.)
+
+3.3. Unexpected exception → 500
+
+Any unhandled exception in the engine:
+
+{
+  "error": "Some error message here"
+}
+
+
+with HTTP status 500 InternalServerError.
