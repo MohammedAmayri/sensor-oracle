@@ -779,12 +779,13 @@ export const DecoderGenerator = () => {
       const result = await response.json();
 
       // Populate all state from the single API response
-      setDeviceFormat(result.deviceFormat || "");
-      setCompositeSpec(result.compositeSpec || "");
-      setRulesBlock(result.rulesBlock || "");
-      setExamplesTablesMd(result.examplesTablesMarkdown || "");
-      setDecoderCode(result.decoderCode || "");
-      setFeedbackMarkdown(result.decoderFeedback || "");
+      // API returns PascalCase field names, but also check camelCase as fallback
+      setDeviceFormat(result.DeviceFormat || result.deviceFormat || "");
+      setCompositeSpec(result.CompositeSpec || result.compositeSpec || "");
+      setRulesBlock(result.RulesBlock || result.rulesBlock || "");
+      setExamplesTablesMd(result.ExamplesTablesMarkdown || result.examplesTablesMarkdown || "");
+      setDecoderCode(result.DecoderCode || result.decoderCode || "");
+      setFeedbackMarkdown(result.DecoderFeedback || result.decoderFeedback || "");
 
       // Advance to first content step
       goToStep(findIndexByStep("step1_composite"), { markComplete: true });
