@@ -752,36 +752,24 @@ export const DecoderGenerator = () => {
       // Remove trailing slash from base URL
       const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
 
-      // Determine if we're sending JSON or plain text
-      const hasOptionalFields = deviceName || sensorSpecificPrompt || manualExamples;
-      
-      let response;
-      if (hasOptionalFields) {
-        // Send JSON with optional fields
-        const requestBody = {
-          deviceName: deviceName || undefined,
-          sensorSpecificPrompt: sensorSpecificPrompt || undefined,
-          documentation,
-          manualExamples: manualExamples || undefined,
-        };
+      // Always send JSON with documentation as required field
+      // Optional fields: deviceName, sensorSpecificPrompt, manualExamples
+      const requestBody: any = {
+        documentation,
+      };
 
-        response = await fetch(`${cleanBase}/api/DecoderGenerator?code=${key}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
-      } else {
-        // Send plain text documentation only
-        response = await fetch(`${cleanBase}/api/DecoderGenerator?code=${key}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain",
-          },
-          body: documentation,
-        });
-      }
+      // Only include optional fields if they have values
+      if (deviceName) requestBody.deviceName = deviceName;
+      if (sensorSpecificPrompt) requestBody.sensorSpecificPrompt = sensorSpecificPrompt;
+      if (manualExamples) requestBody.manualExamples = manualExamples;
+
+      const response = await fetch(`${cleanBase}/api/DecoderGenerator?code=${key}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify(requestBody),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

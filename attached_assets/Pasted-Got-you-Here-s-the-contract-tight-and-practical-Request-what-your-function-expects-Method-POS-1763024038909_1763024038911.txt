@@ -1,0 +1,68 @@
+Got you. Here’s the contract—tight and practical.
+
+Request (what your function expects)
+
+Method: POST
+Headers: Content-Type: application/json; charset=utf-8
+Body (JSON):
+
+{
+  "deviceName": "Milesight EM320-TH",          // optional (string)
+  "documentation": "...raw vendor docs...",     // REQUIRED (string, can be long, UTF-8)
+  "sensorSpecificPrompt": "...extras/constraints...", // optional (string)
+  "manualExamples": "...your own hex→decoded examples..." // optional (string)
+}
+
+
+Notes:
+
+documentation is the only must-have. Everything else is optional.
+
+Send JSON only. If the body starts with < (HTML), you’ll get the JSON parser error you saw.
+
+Large payloads are fine; just keep it UTF-8 JSON.
+
+Minimal valid example
+{
+  "documentation": "PDF text or markdown pasted here"
+}
+
+Full example
+{
+  "deviceName": "Watteco Dry Contacts",
+  "documentation": "Section 4.1 Uplink frames... (paste the cleaned text)",
+  "sensorSpecificPrompt": "Prefer SI units. Include battery flags.",
+  "manualExamples": "0x01 0x8F 0x.... => contact_open=true; battery=2.95V"
+}
+
+
+cURL
+
+curl -X POST "https://<your-fn-app>.azurewebsites.net/api/DecoderGenerator" \
+  -H "Content-Type: application/json" \
+  -d @payload.json
+
+Response (what you get back)
+
+Status: 200 OK
+Content-Type: application/json
+Body (JSON):
+
+{
+  "deviceFormat": "tlv | hybrid | fixed_framecode | fixed_no_code | unknown",
+  "compositeSpec": "markdown/json-ish description of bitfields/composites",
+  "rulesBlock": "authoritative TLV or frame rules synthesized from docs/examples",
+  "examplesTablesMarkdown": "markdown tables extracted from examples in docs",
+  "decoderCode": "// full C# decoder source code string",
+  "decoderFeedback": "score + issues + suggested patches as text"
+}
+
+Sample (truncated)
+{
+  "deviceFormat": "fixed_framecode",
+  "compositeSpec": "FRAME_CODE: 0x01 -> layout: status,battery,...",
+  "rulesBlock": "RULES:\n- frame 0x01: ...\n- frame 0x02: ...",
+  "examplesTablesMarkdown": "| Hex | Decoded |\n|---|---|\n|01 8F ...| contact_open=true |",
+  "decoderCode": "using System; namespace Decoders { public static class MyDecoder { ... } }",
+  "decoderFeedback": "Score: 8/10\nIssues: handle battery low flag; add CRC check.\nPatches: ..."
+}
