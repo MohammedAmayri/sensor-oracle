@@ -787,8 +787,13 @@ export const DecoderGenerator = () => {
       setDecoderCode(result.DecoderCode || result.decoderCode || "");
       setFeedbackMarkdown(result.DecoderFeedback || result.decoderFeedback || "");
 
-      // Advance to first content step
-      goToStep(findIndexByStep("step1_composite"), { markComplete: true });
+      // For Generic, we receive all outputs at once, so mark all relevant steps as complete
+      // This allows navigation through steps 1, 2, 3, and 5
+      const step5Index = findIndexByStep("step5_decoder");
+      setFurthestCompletedIndex(step5Index);
+      
+      // Navigate to first content step
+      goToStep(findIndexByStep("step1_composite"));
 
       toast({
         title: "Generic decoder generated",
