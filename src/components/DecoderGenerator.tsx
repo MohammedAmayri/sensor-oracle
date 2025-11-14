@@ -101,32 +101,14 @@ export const DecoderGenerator = () => {
   
   const [jobId, setJobId] = useState<string>("");
 
-  // Manufacturer-specific API credentials
-  const MILESIGHT_BASE = import.meta.env.VITE_MILESIGHT_BASE;
-  const MILESIGHT_KEY = import.meta.env.VITE_MILESIGHT_KEY;
-  const DECENTLAB_BASE = import.meta.env.VITE_DECENTLAB_BASE;
-  const DECENTLAB_KEY = import.meta.env.VITE_DECENTLAB_KEY;
-  const DRAGINO_BASE = import.meta.env.VITE_DRAGINO_BASE;
-  const DRAGINO_KEY = import.meta.env.VITE_DRAGINO_KEY;
-  const WATTECO_BASE = import.meta.env.VITE_WATTECO_BASE;
-  const WATTECO_KEY = import.meta.env.VITE_WATTECO_KEY;
-  const GENERIC_BASE = import.meta.env.VITE_GENERIC_BASE;
-  const GENERIC_KEY = import.meta.env.VITE_GENERIC_KEY;
+  // Unified Azure Function credentials for all manufacturers and feedback loop
+  const DECODER_BASE = import.meta.env.VITE_DECODER_BASE;
+  const DECODER_KEY = import.meta.env.VITE_DECODER_KEY;
 
-  // Get the appropriate base URL and key based on manufacturer
+  // Get API credentials (now unified for all manufacturers)
   const getApiCredentials = () => {
-    if (manufacturer === "milesight") {
-      return { base: MILESIGHT_BASE, key: MILESIGHT_KEY };
-    } else if (manufacturer === "decentlab") {
-      return { base: DECENTLAB_BASE, key: DECENTLAB_KEY };
-    } else if (manufacturer === "dragino") {
-      return { base: DRAGINO_BASE, key: DRAGINO_KEY };
-    } else if (manufacturer === "watteco") {
-      return { base: WATTECO_BASE, key: WATTECO_KEY };
-    } else if (manufacturer === "generic") {
-      return { base: GENERIC_BASE, key: GENERIC_KEY };
-    }
-    return { base: "", key: "" };
+    // All manufacturers now use the same unified Azure Function resource
+    return { base: DECODER_BASE, key: DECODER_KEY };
   };
 
   // Sync step with currentIndex
