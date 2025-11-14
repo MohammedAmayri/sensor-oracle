@@ -1,0 +1,20 @@
+Code	File	Line	Column
+        [Function("WattecoGenerateDeviceProfile")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Watteco\WattecoGenerateDeviceProfileFunction.cs	15	10
+        [Function("DecentLabExtractDecentlabExamples")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\DecentLab\DecentLabExtractDecentlabExamplesFunction.cs	13	10
+        [Function("DecentLabGenerateDecentlabDecoder")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\DecentLab\DecentLabGenerateDecentlabDecoderFunction.cs	13	10
+        [Function("DecentLabGenerateDecentlabRules")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\DecentLab\DecentLabGenerateDecentlabRulesFunction.cs	13	10
+        [Function("DecentLabGetStaticDecoderFeedback")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\DecentLab\DecentLabGetStaticDecoderFeedbackFunction.cs	13	10
+        [Function("DecentLabRefineDecentlabDecoder")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\DecentLab\DecentLabRefineDecentlabDecoderFunction.cs	13	10
+        [Function("DecentLabRefineDecentlabRules")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\DecentLab\DecentLabRefineDecentlabRulesFunction.cs	13	10
+        [Function("DraginoGenerateDraginoDecoder")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Dragino\DraginoGenerateDraginoDecoderFunction.cs	21	10
+        [Function("DraginoGenerateDraginoRules")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Dragino\DraginoGenerateDraginoRulesFunction.cs	21	10
+        [Function("GenericDecoderGenerator")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Generic\GenericDecoderGeneratorFunction.cs	17	10
+        [Function("MilesightAutoRepairDecoder")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Milesight\MilesightAutoRepairDecoderFunction.cs	27	10
+        [Function("MilesightDecoderFeedback")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Milesight\MilesightDecoderFeedbackFunction.cs	27	10
+        [Function("MilesightExtractExamplesTables")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Milesight\MilesightExtractExamplesTablesFunction.cs	25	10
+        [Function("MilesightGenerateCompositeSpec")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Milesight\MilesightGenerateCompositeSpecFunction.cs	25	10
+        [Function("MilesightGenerateDecoder")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Milesight\MilesightGenerateDecoderFunction.cs	26	10
+        [Function("MilesightGenerateRulesBlock")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Milesight\MilesightGenerateRulesBlockFunction.cs	27	10
+        [Function("MilesightReconcileRulesBlock")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Milesight\MilesightReconcileRulesBlockFunction.cs	27	10
+        [Function("RefineDecoder")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\RefineLoopDecoderFunction.cs	46	10
+        [Function("WattecoGenerateDecoderCode")]	C:\Users\mohammed.amayri\source\repos\int-func-decoderGenerator\int-func-decoderGenerator\Functions\Watteco\WattecoGenerateDecoderCodeFunction.cs	15	10
