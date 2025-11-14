@@ -7,6 +7,7 @@ The project's vision is to provide a comprehensive tool for managing IoT device 
 
 ## Recent Changes
 - **2025-11-14:**
+  - **Updated all endpoint paths to match new Azure Function naming convention**: All manufacturer-specific endpoints now use PascalCase with manufacturer prefixes (e.g., `MilesightGenerateCompositeSpec`, `DecentLabGenerateDecentlabRules`, `DraginoGenerateDraginoRules`, `WattecoGenerateDeviceProfile`, `GenericDecoderGenerator`). The universal `RefineDecoder` endpoint remains unchanged.
   - **Consolidated Azure Functions architecture**: Migrated all manufacturer-specific decoder generation endpoints and the refinement/feedback loop to a single unified Azure Function resource (`VITE_DECODER_BASE` and `VITE_DECODER_KEY`). This simplifies credential management while maintaining backward compatibility with existing endpoint paths.
 - **2025-11-12:** 
   - Fixed refinement feedback loop for Milesight and Decentlab workflows. Added refinement notes display section to Step 7, ensuring users can see AI's explanation after clicking "Refine Decoder with Feedback" - matching the functionality available in Step 5 for Dragino and Watteco.
@@ -65,7 +66,13 @@ The application requires the following environment secrets (all prefixed with `V
 - **Unified Decoder Generation (All Manufacturers + Refinement)**:
   - `VITE_DECODER_BASE` & `VITE_DECODER_KEY`: Single Azure Function resource handling all manufacturer workflows (Milesight, Decentlab, Dragino, Watteco, Generic) and decoder refinement with AI feedback
   - Example base URL: `https://int-func-decodergenerator.azurewebsites.net`
-  - Manufacturer-specific endpoints remain unchanged (e.g., `/api/decentlab/examples/extract`, `/api/GenerateCompositeSpec`, `/api/RefineDecoder`)
+  - **Endpoint Naming Convention**: All endpoints use PascalCase with manufacturer prefixes
+    - **Milesight**: `MilesightGenerateCompositeSpec`, `MilesightGenerateRulesBlock`, `MilesightExtractExamplesTables`, `MilesightReconcileRulesBlock`, `MilesightGenerateDecoder`, `MilesightAutoRepairDecoder`, `MilesightDecoderFeedback`
+    - **Decentlab**: `DecentLabGenerateDecentlabRules`, `DecentLabRefineDecentlabRules`, `DecentLabExtractDecentlabExamples`, `DecentLabGenerateDecentlabDecoder`, `DecentLabGetStaticDecoderFeedback`, `DecentLabRefineDecentlabDecoder`
+    - **Dragino**: `DraginoGenerateDraginoRules`, `DraginoGenerateDraginoDecoder`
+    - **Watteco**: `WattecoGenerateDeviceProfile`, `WattecoGenerateDecoderCode`
+    - **Generic**: `GenericDecoderGenerator`
+    - **Universal Refinement**: `RefineDecoder` (unchanged, works across all manufacturers)
 
 ## External Dependencies
 
