@@ -6,6 +6,8 @@ The Sensor Whisperer (sensor-oracle) is a React-based web application designed f
 The project's vision is to provide a comprehensive tool for managing IoT device data and accelerating the development of device decoders, thereby reducing manual effort and potential errors in IoT deployments. It targets a market need for efficient handling of diverse IoT device ecosystems.
 
 ## Recent Changes
+- **2025-11-14:**
+  - **Consolidated Azure Functions architecture**: Migrated all manufacturer-specific decoder generation endpoints and the refinement/feedback loop to a single unified Azure Function resource (`VITE_DECODER_BASE` and `VITE_DECODER_KEY`). This simplifies credential management while maintaining backward compatibility with existing endpoint paths.
 - **2025-11-12:** 
   - Fixed refinement feedback loop for Milesight and Decentlab workflows. Added refinement notes display section to Step 7, ensuring users can see AI's explanation after clicking "Refine Decoder with Feedback" - matching the functionality available in Step 5 for Dragino and Watteco.
   - **Added complete Generic manufacturer workflow** with dual-input mode (PDF upload via Azure extraction OR direct text paste), single-call API integration returning all workflow outputs (deviceFormat, compositeSpec, rulesBlock, examplesTablesMarkdown, decoderCode, decoderFeedback), and full integration with universal refinement system. Generic workflow displays outputs progressively through steps 1-5 with refinement capability.
@@ -52,20 +54,18 @@ The application uses `shadcn/ui` components built on `Radix UI` primitives, styl
     *   Generic workflow supports optional metadata fields (deviceName, sensorSpecificPrompt, manualExamples) for enhanced decoder generation.
 
 ### System Design Choices
-The application is structured as a frontend-only React application with backend interactions managed via Azure Functions. It leverages shared utility modules for Azure-related operations. Environment variables are used for API keys and base URLs, including manufacturer-specific credentials for enhanced security and flexibility. The development environment is configured for Replit, using Vite for fast development and building.
+The application is structured as a frontend-only React application with backend interactions managed via Azure Functions. It leverages shared utility modules for Azure-related operations. The development environment is configured for Replit, using Vite for fast development and building.
+
+**Azure Functions Architecture:** All decoder generation endpoints (previously distributed across manufacturer-specific Azure Functions) have been consolidated into a single unified Azure Function resource. This simplifies credential management while maintaining manufacturer-specific endpoint paths for routing.
 
 ### Environment Variables
 The application requires the following environment secrets (all prefixed with `VITE_` for frontend access):
-- **General Azure Functions**:
-  - `FUNC_BASE` & `FUNC_KEY`: Main Azure Functions endpoint
-- **Manufacturer-specific Decoder Generation**:
-  - `VITE_MILESIGHT_BASE` & `VITE_MILESIGHT_KEY`: Milesight decoder generation
-  - `VITE_DECENTLAB_BASE` & `VITE_DECENTLAB_KEY`: Decentlab decoder generation
-  - `VITE_DRAGINO_BASE` & `VITE_DRAGINO_KEY`: Dragino decoder generation
-  - `VITE_WATTECO_BASE` & `VITE_WATTECO_KEY`: Watteco decoder generation
-  - `VITE_GENERIC_BASE` & `VITE_GENERIC_KEY`: Generic decoder generation (dual-input mode)
-- **Universal Decoder Refinement**:
-  - `VITE_REFINE_BASE` & `VITE_REFINE_KEY`: Cross-manufacturer decoder refinement with AI feedback
+- **PDF Extraction (Azure Document Intelligence)**:
+  - `VITE_FUNC_BASE` & `VITE_FUNC_KEY`: PDF upload and extraction endpoint
+- **Unified Decoder Generation (All Manufacturers + Refinement)**:
+  - `VITE_DECODER_BASE` & `VITE_DECODER_KEY`: Single Azure Function resource handling all manufacturer workflows (Milesight, Decentlab, Dragino, Watteco, Generic) and decoder refinement with AI feedback
+  - Example base URL: `https://int-func-decodergenerator.azurewebsites.net`
+  - Manufacturer-specific endpoints remain unchanged (e.g., `/api/decentlab/examples/extract`, `/api/GenerateCompositeSpec`, `/api/RefineDecoder`)
 
 ## External Dependencies
 
