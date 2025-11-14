@@ -297,7 +297,7 @@ export const DecoderGenerator = () => {
   const runStep1GenerateCompositeSpec = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("GenerateCompositeSpec", { documentation });
+      const result = await callDecoderGenAPI("MilesightGenerateCompositeSpec", { documentation });
       setCompositeSpec(result.compositeSpec);
       goToStep(findIndexByStep("step1_composite"), { markComplete: true });
       toast({
@@ -318,7 +318,7 @@ export const DecoderGenerator = () => {
   const runStep2GenerateRulesBlock = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("GenerateRulesBlock", {
+      const result = await callDecoderGenAPI("MilesightGenerateRulesBlock", {
         documentation,
         sensorSpecificPrompt,
         compositeSpec,
@@ -343,7 +343,7 @@ export const DecoderGenerator = () => {
   const runStep3ExtractExamplesTables = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("ExtractExamplesTables", { documentation });
+      const result = await callDecoderGenAPI("MilesightExtractExamplesTables", { documentation });
       setExamplesTablesMd(result.examplesTablesMd);
       goToStep(findIndexByStep("step3_examples"), { markComplete: true });
       toast({
@@ -364,7 +364,7 @@ export const DecoderGenerator = () => {
   const runStep4ReconcileRulesBlock = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("ReconcileRulesBlock", {
+      const result = await callDecoderGenAPI("MilesightReconcileRulesBlock", {
         rulesBlock,
         examplesTablesMd,
         compositeSpec,
@@ -389,7 +389,7 @@ export const DecoderGenerator = () => {
   const runStep5GenerateDecoder = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("GenerateDecoder", {
+      const result = await callDecoderGenAPI("MilesightGenerateDecoder", {
         rulesBlock,
         examplesTablesMd,
       });
@@ -413,7 +413,7 @@ export const DecoderGenerator = () => {
   const runStep6AutoRepairDecoder = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("AutoRepairDecoder", {
+      const result = await callDecoderGenAPI("MilesightAutoRepairDecoder", {
         rulesBlock,
         examplesTablesMd,
         decoderCode,
@@ -438,7 +438,7 @@ export const DecoderGenerator = () => {
   const runStep7DecoderFeedback = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("DecoderFeedback", {
+      const result = await callDecoderGenAPI("MilesightDecoderFeedback", {
         rulesBlock,
         examplesTablesMd,
         decoderCode,
@@ -464,7 +464,7 @@ export const DecoderGenerator = () => {
   const runDecentlabStep1GenerateRules = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("decentlab/rules/generate", {
+      const result = await callDecoderGenAPI("DecentLabGenerateDecentlabRules", {
         documentation,
         sensorPrompt: sensorSpecificPrompt || undefined,
       });
@@ -488,7 +488,7 @@ export const DecoderGenerator = () => {
   const runDecentlabStep2RefineRules = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("decentlab/rules/refine", {
+      const result = await callDecoderGenAPI("DecentLabRefineDecentlabRules", {
         documentation,
         sensorPrompt: sensorSpecificPrompt || undefined,
         currentRulesBlock: rulesBlock,
@@ -513,7 +513,7 @@ export const DecoderGenerator = () => {
   const runDecentlabStep3ExtractExamples = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("decentlab/examples/extract", {
+      const result = await callDecoderGenAPI("DecentLabExtractDecentlabExamples", {
         documentation,
       });
       setExamplesTablesMd(result.examplesMarkdown);
@@ -536,7 +536,7 @@ export const DecoderGenerator = () => {
   const runDecentlabStep4GenerateDecoder = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("decentlab/decoder/generate", {
+      const result = await callDecoderGenAPI("DecentLabGenerateDecentlabDecoder", {
         documentation,
         rulesBlock,
         examplesMarkdown: examplesTablesMd,
@@ -561,7 +561,7 @@ export const DecoderGenerator = () => {
   const runDecentlabStep5StaticFeedback = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("decentlab/decoder/feedback", {
+      const result = await callDecoderGenAPI("DecentLabGetStaticDecoderFeedback", {
         decoderCode,
         rulesBlock,
       });
@@ -585,7 +585,7 @@ export const DecoderGenerator = () => {
   const runDecentlabStep6RefineDecoder = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("decentlab/decoder/refine", {
+      const result = await callDecoderGenAPI("DecentLabRefineDecentlabDecoder", {
         currentCode: decoderCode,
         userFeedback: sensorSpecificPrompt || undefined,
         documentation,
@@ -613,7 +613,7 @@ export const DecoderGenerator = () => {
   const runDraginoStep1GenerateRules = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("GenerateDraginoRules", {
+      const result = await callDecoderGenAPI("DraginoGenerateDraginoRules", {
         documentation,
         sensorSpecificPrompt: sensorSpecificPrompt || undefined,
       });
@@ -638,7 +638,7 @@ export const DecoderGenerator = () => {
   const runDraginoStep2GenerateDecoder = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("GenerateDraginoDecoder", {
+      const result = await callDecoderGenAPI("DraginoGenerateDraginoDecoder", {
         rulesBlock,
       });
       // Note: API may return DecoderCode (capital D, C) or decoderCode
@@ -663,7 +663,7 @@ export const DecoderGenerator = () => {
   const runWattecoStep1GenerateProfile = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("GenerateDeviceProfile", {
+      const result = await callDecoderGenAPI("WattecoGenerateDeviceProfile", {
         deviceDocumentation: documentation,
         extraHints: sensorSpecificPrompt || undefined,
       });
@@ -689,7 +689,7 @@ export const DecoderGenerator = () => {
   const runWattecoStep2GenerateDecoder = async () => {
     setIsProcessing(true);
     try {
-      const result = await callDecoderGenAPI("GenerateDecoderCode", {
+      const result = await callDecoderGenAPI("WattecoGenerateDecoderCode", {
         deviceProfile,
         deviceNameOverride: deviceName || undefined,
         safeClassNameOverride: safeClassName || undefined,
@@ -745,7 +745,7 @@ export const DecoderGenerator = () => {
       if (sensorSpecificPrompt) requestBody.sensorSpecificPrompt = sensorSpecificPrompt;
       if (manualExamples) requestBody.manualExamples = manualExamples;
 
-      const response = await fetch(`${cleanBase}/api/DecoderGenerator?code=${key}`, {
+      const response = await fetch(`${cleanBase}/api/GenericDecoderGenerator?code=${key}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json; charset=utf-8",
