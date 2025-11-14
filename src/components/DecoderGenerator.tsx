@@ -804,15 +804,15 @@ export const DecoderGenerator = () => {
 
     setIsProcessing(true);
     try {
-      const refineBase = import.meta.env.VITE_REFINE_BASE;
-      const refineKey = import.meta.env.VITE_REFINE_KEY;
-
-      if (!refineBase || !refineKey) {
-        throw new Error("Refine API credentials not configured");
+      // Use unified credentials for refinement endpoint
+      const { base, key } = getApiCredentials();
+      
+      if (!base || !key) {
+        throw new Error("Decoder API credentials not configured");
       }
 
       // Remove trailing slash from base URL to prevent double slashes
-      const cleanRefineBase = refineBase.endsWith('/') ? refineBase.slice(0, -1) : refineBase;
+      const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
 
       const requestBody: any = {
         manufacturer,
@@ -843,7 +843,7 @@ export const DecoderGenerator = () => {
         requestBody.deviceName = deviceName || undefined;
       }
 
-      const response = await fetch(`${cleanRefineBase}/api/RefineDecoder?code=${refineKey}`, {
+      const response = await fetch(`${cleanBase}/api/RefineDecoder?code=${key}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
